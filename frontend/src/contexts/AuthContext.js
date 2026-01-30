@@ -1,7 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+// Ensure HTTPS is used - dynamically construct URL to avoid mixed content issues
+const getApiUrl = () => {
+  // Use environment variable if available
+  const envUrl = process.env.REACT_APP_BACKEND_URL;
+  if (envUrl) {
+    // Ensure HTTPS
+    return envUrl.replace('http://', 'https://');
+  }
+  // Fallback to current origin
+  return window.location.origin;
+};
+
+const API_URL = getApiUrl();
 
 const AuthContext = createContext(null);
 
