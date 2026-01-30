@@ -27,8 +27,9 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(localStorage.getItem('auth_token'));
 
+  // Create API instance with dynamic URL based on current window location
   const api = axios.create({
-    baseURL: `${API_URL}/api`,
+    baseURL: `${getApiUrl()}/api`,
     withCredentials: true,
   });
 
