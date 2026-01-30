@@ -1,19 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
-// Ensure HTTPS is used - dynamically construct URL to avoid mixed content issues
+// Build API URL dynamically to ensure HTTPS in production
 const getApiUrl = () => {
-  // Use environment variable if available
-  const envUrl = process.env.REACT_APP_BACKEND_URL;
-  if (envUrl) {
-    // Ensure HTTPS
-    return envUrl.replace('http://', 'https://');
+  // In production, use the current origin with HTTPS
+  if (typeof window !== 'undefined') {
+    const protocol = window.location.protocol;
+    const host = window.location.host;
+    return `${protocol}//${host}`;
   }
-  // Fallback to current origin
-  return window.location.origin;
+  return process.env.REACT_APP_BACKEND_URL || '';
 };
-
-const API_URL = getApiUrl();
 
 const AuthContext = createContext(null);
 
