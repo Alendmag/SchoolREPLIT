@@ -27,8 +27,12 @@ JWT_SECRET = os.environ.get('JWT_SECRET', 'school-management-secret-key-2024')
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24 * 7  # 7 days
 
-# Create the main app
-app = FastAPI(title="School Management System API", version="1.0.0")
+# Create the main app - disable redirect_slashes to avoid 307 redirects
+app = FastAPI(
+    title="School Management System API", 
+    version="1.0.0",
+    redirect_slashes=False
+)
 
 # Create routers
 api_router = APIRouter(prefix="/api")
