@@ -27,12 +27,24 @@ JWT_SECRET = os.environ.get('JWT_SECRET', 'school-management-secret-key-2024')
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24 * 7  # 7 days
 
-# Create the main app - disable redirect_slashes to avoid 307 redirects
+# Create the main app
 app = FastAPI(
     title="School Management System API", 
-    version="1.0.0",
-    redirect_slashes=False
+    version="1.0.0"
 )
+
+# Middleware to fix protocol in redirects
+@app.middleware("http")
+async def enforce_https_redirects(request: Request, call_next):
+    response = await call_next(request)
+    # If it's a redirect, ensure the Location header uses HTTPS
+    if response.status_code in (301, 302, 307, 308):
+        location = response.headers.get("location", "")
+        if location.startswith("http://"):
+            # Replace http with https
+            new_location = location.replace("http://", "https://", 1)
+            response.headers["location"] = new_location
+    return response
 
 # Create routers
 api_router = APIRouter(prefix="/api")
