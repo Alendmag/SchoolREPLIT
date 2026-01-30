@@ -1,16 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
-
-// Build API URL dynamically to ensure HTTPS in production
-const getApiUrl = () => {
-  // In production, use the current origin with HTTPS
-  if (typeof window !== 'undefined') {
-    const protocol = window.location.protocol;
-    const host = window.location.host;
-    return `${protocol}//${host}`;
-  }
-  return process.env.REACT_APP_BACKEND_URL || '';
-};
 
 const AuthContext = createContext(null);
 
@@ -27,20 +16,29 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(localStorage.getItem('auth_token'));
 
-  // Create API instance with dynamic URL based on current window location
-  const api = axios.create({
-    baseURL: `${getApiUrl()}/api`,
-    withCredentials: true,
-  });
+  // Create API instance using useMemo to ensure it's created only once in browser
+  const api = useMemo(() => {
+    // Get the base URL dynamically from window.location
+    const baseURL = typeof window !== 'undefined' 
+      ? `${window.location.protocol}//${window.location.host}/api`
+      : '/api';
+    
+    const instance = axios.create({
+      baseURL,
+      withCredentials: true,
+    });
 
-  // Add token to requests
-  api.interceptors.request.use((config) => {
-    const storedToken = localStorage.getItem('auth_token');
-    if (storedToken) {
-      config.headers.Authorization = `Bearer ${storedToken}`;
-    }
-    return config;
-  });
+    // Add request interceptor for auth token
+    instance.interceptors.request.use((config) => {
+      const storedToken = localStorage.getItem('auth_token');
+      if (storedToken) {
+        config.headers.Authorization = `Bearer ${storedToken}`;
+      }
+      return config;
+    });
+
+    return instance;
+  }, []);
 
   const checkAuth = useCallback(async () => {
     try {
@@ -52,7 +50,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [api]);
 
   useEffect(() => {
     if (token) {
