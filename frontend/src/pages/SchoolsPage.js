@@ -93,7 +93,7 @@ export default function SchoolsPage() {
     setSubmitting(true);
 
     try {
-      await api.post('/schools/', formData);
+      await api.post('/schools', formData);
       toast.success(language === 'ar' ? 'تم إضافة المدرسة بنجاح' : 'School added successfully');
       setDialogOpen(false);
       fetchSchools();
