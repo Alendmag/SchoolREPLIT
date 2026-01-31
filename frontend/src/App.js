@@ -101,7 +101,51 @@ const AppRouter = () => {
           </ProtectedRoute>
         }
       >
-        <Route index element={<StudentsPage />} /> {/* Reuse structure, will create proper page */}
+        <Route index element={<TeachersPage />} />
+      </Route>
+
+      <Route
+        path="/grades"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<GradesPage />} />
+      </Route>
+
+      <Route
+        path="/subjects"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<SubjectsPage />} />
+      </Route>
+
+      <Route
+        path="/exams"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<ExamsPage />} />
+      </Route>
+
+      <Route
+        path="/attendance"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<AttendancePage />} />
       </Route>
 
       <Route
@@ -113,6 +157,61 @@ const AppRouter = () => {
         }
       >
         <Route index element={<FinancePage />} />
+      </Route>
+
+      <Route
+        path="/messages"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<MessagesPage />} />
+      </Route>
+
+      <Route
+        path="/reports"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<ReportsPage />} />
+      </Route>
+
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<SettingsPage />} />
+      </Route>
+
+      <Route
+        path="/schedule"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<SchedulePage />} />
+      </Route>
+
+      <Route
+        path="/activity-log"
+        element={
+          <ProtectedRoute allowedRoles={['super_admin', 'school_admin']}>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<ActivityLogPage />} />
       </Route>
 
       <Route
