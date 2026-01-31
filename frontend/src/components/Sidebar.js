@@ -26,6 +26,10 @@ import {
   Bot,
   ClipboardList,
   UserCheck,
+  BarChart3,
+  Clock,
+  Activity,
+  Layers,
 } from 'lucide-react';
 
 export const Sidebar = ({ collapsed, onToggle }) => {
