@@ -34,7 +34,7 @@ import {
 
 export const Sidebar = ({ collapsed, onToggle }) => {
   const { user, logout, isSuperAdmin, isSchoolAdmin, isTeacher, isStudent, isParent, isAccountant } = useAuth();
-  const { t, isRTL } = useLanguage();
+  const { t, isRTL, language } = useLanguage();
   const location = useLocation();
   const navigate = useNavigate();
 
