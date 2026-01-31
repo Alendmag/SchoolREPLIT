@@ -1766,6 +1766,19 @@ api_router.include_router(academic_router)
 api_router.include_router(notifications_router)
 api_router.include_router(ai_router)
 
+# Include extended routes
+from routes_extended import setup_extended_routes
+extended_routers = setup_extended_routes(db, get_current_user, require_roles, UserRole)
+api_router.include_router(extended_routers["sections_router"])
+api_router.include_router(extended_routers["schedule_router"])
+api_router.include_router(extended_routers["assignments_router"])
+api_router.include_router(extended_routers["messages_router"])
+api_router.include_router(extended_routers["reports_router"])
+api_router.include_router(extended_routers["activity_router"])
+api_router.include_router(extended_routers["settings_router"])
+api_router.include_router(extended_routers["parent_router"])
+api_router.include_router(extended_routers["levels_router"])
+
 app.include_router(api_router)
 
 # CORS middleware
