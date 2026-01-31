@@ -59,7 +59,7 @@ export const Sidebar = ({ collapsed, onToggle }) => {
       items.push(
         { icon: Building2, label: t('schools'), href: '/schools' },
         { icon: Key, label: t('licenses'), href: '/licenses' },
-        { icon: HeadphonesIcon, label: t('support'), href: '/support' },
+        { icon: Activity, label: language === 'ar' ? 'سجل النشاط' : 'Activity Log', href: '/activity-log' },
       );
     }
 
@@ -68,12 +68,15 @@ export const Sidebar = ({ collapsed, onToggle }) => {
       items.push(
         { icon: Users, label: t('students'), href: '/students' },
         { icon: GraduationCap, label: t('teachers'), href: '/teachers' },
-        { icon: BookOpen, label: t('grades'), href: '/grades' },
-        { icon: ClipboardList, label: t('subjects'), href: '/subjects' },
+        { icon: Layers, label: language === 'ar' ? 'الصفوف والشعب' : 'Grades', href: '/grades' },
+        { icon: BookOpen, label: t('subjects'), href: '/subjects' },
         { icon: FileText, label: t('exams'), href: '/exams' },
         { icon: UserCheck, label: t('attendance'), href: '/attendance' },
+        { icon: Clock, label: language === 'ar' ? 'الجدول' : 'Schedule', href: '/schedule' },
         { icon: DollarSign, label: t('finance'), href: '/finance' },
-        { icon: Bell, label: t('notifications'), href: '/notifications' },
+        { icon: MessageSquare, label: language === 'ar' ? 'الرسائل' : 'Messages', href: '/messages' },
+        { icon: BarChart3, label: t('reports'), href: '/reports' },
+        { icon: Activity, label: language === 'ar' ? 'سجل النشاط' : 'Activity Log', href: '/activity-log' },
         { icon: Settings, label: t('settings'), href: '/settings' },
       );
     }
@@ -85,7 +88,8 @@ export const Sidebar = ({ collapsed, onToggle }) => {
         { icon: BookOpen, label: t('subjects'), href: '/subjects' },
         { icon: FileText, label: t('exams'), href: '/exams' },
         { icon: UserCheck, label: t('attendance'), href: '/attendance' },
-        { icon: Bell, label: t('notifications'), href: '/notifications' },
+        { icon: Clock, label: language === 'ar' ? 'الجدول' : 'Schedule', href: '/schedule' },
+        { icon: MessageSquare, label: language === 'ar' ? 'الرسائل' : 'Messages', href: '/messages' },
       );
     }
 
@@ -94,9 +98,9 @@ export const Sidebar = ({ collapsed, onToggle }) => {
       items.push(
         { icon: BookOpen, label: t('subjects'), href: '/subjects' },
         { icon: FileText, label: t('exams'), href: '/exams' },
-        { icon: Calendar, label: t('calendar'), href: '/calendar' },
+        { icon: Clock, label: language === 'ar' ? 'الجدول' : 'Schedule', href: '/schedule' },
         { icon: DollarSign, label: t('finance'), href: '/finance' },
-        { icon: Bell, label: t('notifications'), href: '/notifications' },
+        { icon: MessageSquare, label: language === 'ar' ? 'الرسائل' : 'Messages', href: '/messages' },
       );
     }
 
@@ -107,7 +111,7 @@ export const Sidebar = ({ collapsed, onToggle }) => {
         { icon: UserCheck, label: t('attendance'), href: '/attendance' },
         { icon: FileText, label: t('exams'), href: '/exams' },
         { icon: DollarSign, label: t('finance'), href: '/finance' },
-        { icon: Bell, label: t('notifications'), href: '/notifications' },
+        { icon: MessageSquare, label: language === 'ar' ? 'الرسائل' : 'Messages', href: '/messages' },
       );
     }
 
@@ -115,8 +119,8 @@ export const Sidebar = ({ collapsed, onToggle }) => {
     if (isAccountant) {
       items.push(
         { icon: DollarSign, label: t('finance'), href: '/finance' },
-        { icon: FileText, label: t('invoices'), href: '/invoices' },
-        { icon: Bell, label: t('notifications'), href: '/notifications' },
+        { icon: BarChart3, label: t('reports'), href: '/reports' },
+        { icon: MessageSquare, label: language === 'ar' ? 'الرسائل' : 'Messages', href: '/messages' },
       );
     }
 
