@@ -1781,6 +1781,7 @@ api_router.include_router(extended_routers["levels_router"])
 api_router.include_router(extended_routers["onboarding_router"])
 api_router.include_router(extended_routers["notifications_router"])
 api_router.include_router(extended_routers["export_router"])
+api_router.include_router(extended_routers["rooms_router"])
 
 app.include_router(api_router)
 
