@@ -1,105 +1,177 @@
-# School Management System (SMS) - PRD
+# نظام إدارة المدارس (School Management System)
+## وثيقة متطلبات المنتج (PRD)
 
-## Original Problem Statement
-Build a commercial-grade School Management System for private schools in Libya with:
-- Multi-tenant SaaS architecture
-- Arabic (RTL) as primary language, English as secondary
-- 8 user roles with role-based dashboards
-- License & activation system for commercial sale
+---
 
-## Architecture
-- **Frontend**: React 18 + Tailwind CSS + Shadcn UI
-- **Backend**: FastAPI (Python) + MongoDB
-- **Authentication**: JWT + Google OAuth (Emergent Auth)
-- **AI Integration**: OpenAI GPT via Emergent LLM Key
+## نظرة عامة
+نظام إدارة مدارس متكامل (SaaS) متعدد المستأجرين للمدارس الخاصة في ليبيا. يدعم اللغة العربية (RTL) والإنجليزية مع الوضع الفاتح/الداكن.
 
-## User Personas
-1. **Super Admin**: Software vendor managing all schools, licenses, support
-2. **School Admin**: School owner managing their school operations
-3. **School Manager**: Day-to-day school management
-4. **Teacher**: Class management, grades, attendance
-5. **Student**: View grades, schedule, assignments
-6. **Parent**: Monitor child's performance and finances
-7. **Accountant**: Financial management, invoicing
-8. **Support Agent**: Technical support for vendor
+## أدوار المستخدمين
+| الدور | الوصف |
+|-------|-------|
+| Super Admin | مدير النظام - إدارة المدارس والتراخيص |
+| School Admin | مدير المدرسة - إدارة كاملة للمدرسة |
+| School Manager | مدير تنفيذي - صلاحيات إدارية |
+| Accountant | المحاسب - إدارة المالية |
+| Teacher | المعلم - الحضور والدرجات |
+| Student | الطالب - عرض البيانات |
+| Parent | ولي الأمر - متابعة الأبناء |
 
-## Core Requirements (Static)
-- Multi-tenant data isolation per school
-- Full RTL support for Arabic
-- License management with activation/expiration
-- Role-based access control
-- Dashboard with charts and analytics
-- Student/Teacher/Finance management
+---
 
-## What's Been Implemented (Phase 1)
-**Date: 2026-01-30**
+## الميزات المكتملة ✅
 
-### Backend
-- FastAPI server with MongoDB integration
-- JWT authentication + Google OAuth ready
-- HTTPS redirect middleware for secure communication
-- Complete CRUD APIs for:
-  - Users & Authentication
-  - Schools management
-  - Students management
-  - Teachers management
-  - Licenses (create, activate, suspend, renew)
-  - Finance (invoices, payments)
-  - Academic (grades, subjects, exams, attendance)
-  - Notifications
-  - AI Chat (GPT integration)
+### 1. النظام الأساسي
+- [x] المصادقة (JWT + RBAC)
+- [x] دعم اللغة العربية (RTL) والإنجليزية
+- [x] الوضع الفاتح والداكن
+- [x] نظام الأدوار والصلاحيات
 
-### Frontend
-- RTL/LTR language support (Arabic/English)
-- Dark/Light theme toggle
-- Landing page with pricing
-- Login/Register with JWT and Google OAuth
-- Role-based dashboards:
-  - Super Admin: Schools, licenses, revenue stats
-  - School Admin: Students, teachers, finance, attendance
-- Pages: Dashboard, Schools, Licenses, Students, Finance, AI Assistant
-- Recharts integration for data visualization
-- Shadcn UI components throughout
+### 2. لوحة التحكم
+- [x] إحصائيات عامة (الطلاب، المعلمين، الدخل)
+- [x] مخطط الحضور (دائري)
+- [x] قائمة الأنشطة الأخيرة
+- [x] الأحداث القادمة
 
-### Integrations
-- Google OAuth via Emergent Auth
-- GPT text generation via Emergent LLM Key
-- SMS ready (Twilio structure in place)
+### 3. إدارة المستخدمين
+- [x] صفحة الطلاب (CRUD)
+- [x] صفحة المعلمين (CRUD)
+- [x] بيانات كاملة مع البحث والفلترة
 
-## Prioritized Backlog
+### 4. الشؤون الأكاديمية
+- [x] إدارة الصفوف والشعب
+- [x] إدارة المواد الدراسية
+- [x] إدارة الاختبارات
+- [x] سجل الحضور والغياب
+- [x] جدول الحصص الأسبوعي
 
-### P0 - Critical (Next Sprint)
-1. Complete Teachers management page
-2. Grades/Classes/Sections management
-3. Subjects assignment to teachers
-4. Exam creation and grading
+### 5. الشؤون المالية
+- [x] إدارة الفواتير
+- [x] المدفوعات
+- [x] التقارير المالية
 
-### P1 - High Priority
-1. Attendance recording system
-2. Report cards generation
-3. Parent portal
-4. Notifications with SMS integration
+### 6. التواصل
+- [x] نظام الرسائل الداخلية
+- [x] صندوق الوارد والصادر
 
-### P2 - Medium Priority
-1. Document templates (certificates, transcripts)
-2. Academic calendar
-3. Bulk import (students/teachers)
-4. Export to PDF/Excel
+### 7. التقارير
+- [x] تقارير الحضور
+- [x] تقارير الدرجات
+- [x] التقارير المالية
+- [x] تقارير الطلاب
 
-### P3 - Future Enhancements
-1. Mobile app (React Native)
-2. Payment gateway integration
-3. ERP/Government system integration
-4. Advanced analytics
+### 8. الإعدادات
+- [x] معلومات المدرسة
+- [x] الإعدادات الأكاديمية
+- [x] إعدادات المظهر
 
-## Next Tasks
-1. Fix chart responsive container warnings
-2. Implement Teachers management page
-3. Add Grades/Sections management
-4. Implement Attendance recording
-5. Add notification sending with SMS
+### 9. Super Admin
+- [x] إدارة المدارس
+- [x] إدارة التراخيص
+- [x] سجل النشاط
 
-## Test Accounts
-- **Super Admin**: admin@schoolsms.ly / admin123
-- **School Admin (Al-Noor)**: ahmed@alnoor.edu.ly / school123
-- **Student**: student1@alnoor.edu.ly / student123
+### 10. مساعد AI
+- [x] مساعد ذكي للاستفسارات
+
+---
+
+## البنية التقنية
+
+### Backend (FastAPI)
+```
+/app/backend/
+├── server.py           # التطبيق الرئيسي + المصادقة
+├── models.py           # نماذج البيانات
+├── routes_extended.py  # APIs الموسعة
+└── requirements.txt
+```
+
+### Frontend (React)
+```
+/app/frontend/src/
+├── App.js              # الموجه الرئيسي
+├── contexts/
+│   ├── AuthContext.js
+│   └── LanguageContext.js
+├── components/
+│   ├── DashboardLayout.js
+│   ├── Header.js
+│   └── Sidebar.js
+└── pages/              # جميع الصفحات
+```
+
+### قاعدة البيانات (MongoDB)
+- users, schools, licenses
+- students, teachers, parents
+- grades, sections, subjects
+- exams, attendance, scores
+- invoices, payments, messages
+- activity_logs, settings
+
+---
+
+## APIs الرئيسية
+
+| Endpoint | الوصف |
+|----------|-------|
+| `/api/auth/login` | تسجيل الدخول |
+| `/api/dashboard-stats/` | إحصائيات لوحة التحكم |
+| `/api/students/` | إدارة الطلاب |
+| `/api/teachers/` | إدارة المعلمين |
+| `/api/academic/subjects/` | المواد الدراسية |
+| `/api/academic/exams/` | الاختبارات |
+| `/api/attendance/` | الحضور والغياب |
+| `/api/schedule/` | جدول الحصص |
+| `/api/finance/` | الشؤون المالية |
+| `/api/messages/` | الرسائل |
+| `/api/reports/` | التقارير |
+| `/api/settings/` | الإعدادات |
+| `/api/schools/` | المدارس (Super Admin) |
+| `/api/licenses/` | التراخيص |
+
+---
+
+## بيانات الاختبار
+
+### Super Admin
+- Email: `admin@schoolsms.ly`
+- Password: `Admin@123`
+
+### School Admin
+- Email: `school_admin@test.ly`
+- Password: `Admin@123`
+
+---
+
+## المهام القادمة (Backlog)
+
+### P0 - أولوية عالية
+- [ ] تصدير PDF/Excel للتقارير
+- [ ] معالج الإعداد الأولي للمدارس الجديدة
+
+### P1 - أولوية متوسطة
+- [ ] جدول الحصص بالسحب والإفلات
+- [ ] إشعارات SMS (Twilio)
+- [ ] تسجيل الدخول بـ Google
+
+### P2 - أولوية منخفضة
+- [ ] لوحات تحكم قابلة للتخصيص
+- [ ] التقارير التلقائية المجدولة
+- [ ] تطبيقات الجوال (Android/iOS)
+
+---
+
+## سجل التحديثات
+
+### 2026-03-01
+- إنشاء صفحات: SubjectsPage, ExamsPage, ReportsPage, SettingsPage, SchedulePage, ActivityLogPage
+- تحديث Sidebar بالروابط الجديدة
+- إصلاح خطأ CORS
+- إصلاح خطأ MongoDB ObjectId في endpoint الرسائل
+- اختبارات ناجحة: Backend 100%, Frontend 100%
+
+### 2026-02-28
+- إنشاء MVP كامل
+- صفحات: Dashboard, Students, Teachers, Grades, Attendance, Finance, Messages
+- نظام المصادقة والأدوار
+- دعم RTL والثيمات
