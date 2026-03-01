@@ -76,7 +76,9 @@ export const Sidebar = ({ collapsed, onToggle }) => {
         { icon: Clock, label: language === 'ar' ? 'الجدول' : 'Schedule', href: '/schedule' },
         { icon: DollarSign, label: t('finance'), href: '/finance' },
         { icon: MessageSquare, label: language === 'ar' ? 'الرسائل' : 'Messages', href: '/messages' },
+        { icon: Bell, label: language === 'ar' ? 'الإشعارات' : 'Notifications', href: '/notifications' },
         { icon: BarChart3, label: t('reports'), href: '/reports' },
+        { icon: Download, label: language === 'ar' ? 'تصدير التقارير' : 'Export Reports', href: '/export-reports' },
         { icon: Activity, label: language === 'ar' ? 'سجل النشاط' : 'Activity Log', href: '/activity-log' },
         { icon: Settings, label: t('settings'), href: '/settings' },
       );
