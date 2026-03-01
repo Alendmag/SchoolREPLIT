@@ -1170,27 +1170,16 @@ async def get_unread_count(user: dict = Depends(get_current_user)):
     count = await db.notifications.count_documents({"user_id": user["user_id"], "is_read": False})
     return {"count": count}
 
-# ==================== EXPORT REPORTS ====================
+# Export libraries
 from io import BytesIO
 try:
-    from reportlab.lib.pagesizes import A4
-    from reportlab.platypus import SimpleDocTemplate, Table as PDFTable, TableStyle, Paragraph, Spacer
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib import colors
-    from reportlab.pdfbase import pdfmetrics
-    from reportlab.pdfbase.ttfonts import TTFont
-    REPORTLAB_AVAILABLE = True
-except ImportError:
-    REPORTLAB_AVAILABLE = False
-
-try:
     import openpyxl
-    from openpyxl.styles import Font, Alignment, Border, Side
+    from openpyxl.styles import Font, Alignment
     OPENPYXL_AVAILABLE = True
 except ImportError:
     OPENPYXL_AVAILABLE = False
 
-export_router = APIRouter(prefix="/reports", tags=["Export Reports"])
+REPORTLAB_AVAILABLE = True  # Already imported at top
 
 @export_router.post("/{report_type}/preview")
 async def preview_report(report_type: str, data: dict, user: dict = Depends(get_current_user)):
