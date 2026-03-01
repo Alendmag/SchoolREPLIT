@@ -1781,11 +1781,17 @@ api_router.include_router(extended_routers["levels_router"])
 
 app.include_router(api_router)
 
-# CORS middleware
+# CORS middleware - Allow specific origins for credentials
+cors_origins = os.environ.get('CORS_ORIGINS', '').split(',')
+if not cors_origins or cors_origins == ['']:
+    cors_origins = ["*"]
+# Filter out empty strings
+cors_origins = [o.strip() for o in cors_origins if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
