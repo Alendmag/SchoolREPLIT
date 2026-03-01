@@ -26,6 +26,9 @@ import ActivityLogPage from './pages/ActivityLogPage';
 import SchoolsPage from './pages/SchoolsPage';
 import LicensesPage from './pages/LicensesPage';
 import AIAssistantPage from './pages/AIAssistantPage';
+import OnboardingPage from './pages/OnboardingPage';
+import NotificationsPage from './pages/NotificationsPage';
+import ExportReportsPage from './pages/ExportReportsPage';
 
 import './App.css';
 
