@@ -155,7 +155,7 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         }
         
         await db.academic_levels.insert_one(level_doc)
-        level_doc["created_at"] = now
+        level_doc.pop("_id", None)
         level_doc["grade_count"] = 0
         return level_doc
     
