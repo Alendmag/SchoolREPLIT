@@ -70,9 +70,11 @@ export default function GradesPage() {
       await api.post(endpoints[dialogType], { ...formData, school_id: user.school_id });
       toast.success(language === 'ar' ? 'تم الإضافة بنجاح' : 'Added successfully');
       setDialogOpen(false);
+      setFormData({});
       fetchAllData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || (language === 'ar' ? 'حدث خطأ' : 'Error'));
+      const errMsg = error.response?.data?.detail;
+      toast.error(typeof errMsg === 'string' ? errMsg : (language === 'ar' ? 'حدث خطأ' : 'Error'));
     } finally {
       setSubmitting(false);
     }
