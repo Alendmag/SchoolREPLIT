@@ -30,6 +30,7 @@ import {
   Clock,
   Activity,
   Layers,
+  Download,
 } from 'lucide-react';
 
 export const Sidebar = ({ collapsed, onToggle }) => {
