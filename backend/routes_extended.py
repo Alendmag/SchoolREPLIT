@@ -183,6 +183,25 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         
         return levels
     
+    @levels_router.put("/{level_id}")
+    async def update_level(level_id: str, level_data: dict, user: dict = Depends(get_current_user)):
+        await db.academic_levels.update_one(
+            {"level_id": level_id},
+            {"$set": {
+                "name": level_data.get("name"),
+                "name_ar": level_data.get("name_ar"),
+                "order": level_data.get("order"),
+                "description": level_data.get("description"),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        return {"success": True}
+    
+    @levels_router.delete("/{level_id}")
+    async def delete_level(level_id: str, user: dict = Depends(get_current_user)):
+        await db.academic_levels.delete_one({"level_id": level_id})
+        return {"success": True}
+    
     # ==================== SCHEDULE ROUTES ====================
     
     @schedule_router.post("/periods")
