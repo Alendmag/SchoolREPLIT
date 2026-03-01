@@ -1143,9 +1143,6 @@ async def complete_onboarding(data: dict, user: dict = Depends(get_current_user)
     
     return {"success": True, "message": "Onboarding completed"}
 
-# ==================== NOTIFICATIONS ====================
-notifications_router = APIRouter(prefix="/notifications", tags=["Notifications"])
-
 @notifications_router.get("/")
 async def list_notifications(skip: int = 0, limit: int = 50, user: dict = Depends(get_current_user)):
     query = {"user_id": user["user_id"]}
