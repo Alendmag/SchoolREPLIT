@@ -18,9 +18,9 @@ export const AuthProvider = ({ children }) => {
 
   // Create API instance using useMemo to ensure it's created only once in browser
   const api = useMemo(() => {
-    // Get the base URL dynamically from window.location
-    const baseURL = typeof window !== 'undefined' 
-      ? `${window.location.protocol}//${window.location.host}/api`
+    // Use environment variable if available, otherwise use relative path
+    const baseURL = process.env.REACT_APP_BACKEND_URL 
+      ? `${process.env.REACT_APP_BACKEND_URL}/api`
       : '/api';
     
     const instance = axios.create({
