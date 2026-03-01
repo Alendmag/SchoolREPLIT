@@ -525,6 +525,7 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         }
         
         await db.messages.insert_one(message_doc)
+        message_doc.pop("_id", None)  # Remove MongoDB ObjectId
         message_doc["created_at"] = now
         message_doc["sender_name"] = user.get("name") or user.get("name_ar")
         return message_doc
