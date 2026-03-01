@@ -146,6 +146,16 @@ const AppRouter = () => {
         <Route index element={<AIAssistantPage />} />
       </Route>
 
+      <Route path="/onboarding" element={<ProtectedRoute allowedRoles={['school_admin', 'school_manager']}><OnboardingPage /></ProtectedRoute>} />
+
+      <Route path="/notifications" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+        <Route index element={<NotificationsPage />} />
+      </Route>
+
+      <Route path="/export-reports" element={<ProtectedRoute allowedRoles={['super_admin', 'school_admin', 'school_manager', 'accountant']}><DashboardLayout /></ProtectedRoute>}>
+        <Route index element={<ExportReportsPage />} />
+      </Route>
+
       {/* Catch all */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
