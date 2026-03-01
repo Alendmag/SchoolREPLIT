@@ -1294,7 +1294,8 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         "levels_router": levels_router,
         "onboarding_router": onboarding_router,
         "notifications_router": notifications_router,
-        "export_router": export_router
+        "export_router": export_router,
+        "rooms_router": rooms_router
     }
 
 
