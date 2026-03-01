@@ -25,7 +25,6 @@ export const AuthProvider = ({ children }) => {
     
     const instance = axios.create({
       baseURL,
-      withCredentials: true,
     });
 
     // Add request interceptor for auth token
