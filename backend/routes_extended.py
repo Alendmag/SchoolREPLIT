@@ -1112,6 +1112,48 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         
         return {"success": True, "message": "Onboarding completed"}
 
+    # ==================== ROOMS ====================
+    @rooms_router.get("/")
+    async def list_rooms(user: dict = Depends(get_current_user)):
+        query = {"school_id": user.get("school_id")}
+        rooms = await db.rooms.find(query, {"_id": 0}).to_list(100)
+        return rooms
+
+    @rooms_router.post("/")
+    async def create_room(data: dict, user: dict = Depends(get_current_user)):
+        room_id = generate_id("room")
+        room_doc = {
+            "room_id": room_id,
+            "school_id": user.get("school_id") or data.get("school_id"),
+            "name": data.get("name"),
+            "name_ar": data.get("name_ar"),
+            "type": data.get("type", "classroom"),
+            "capacity": data.get("capacity", 30),
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.rooms.insert_one(room_doc)
+        room_doc.pop("_id", None)
+        return room_doc
+
+    @rooms_router.put("/{room_id}")
+    async def update_room(room_id: str, data: dict, user: dict = Depends(get_current_user)):
+        await db.rooms.update_one(
+            {"room_id": room_id},
+            {"$set": {
+                "name": data.get("name"),
+                "name_ar": data.get("name_ar"),
+                "type": data.get("type"),
+                "capacity": data.get("capacity"),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        return {"success": True}
+
+    @rooms_router.delete("/{room_id}")
+    async def delete_room(room_id: str, user: dict = Depends(get_current_user)):
+        await db.rooms.delete_one({"room_id": room_id})
+        return {"success": True}
+
     # ==================== NOTIFICATIONS ====================
     @notifications_router.get("/")
     async def list_notifications(skip: int = 0, limit: int = 50, user: dict = Depends(get_current_user)):
