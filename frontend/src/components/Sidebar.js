@@ -69,8 +69,7 @@ export const Sidebar = ({ collapsed, onToggle }) => {
       items.push(
         { icon: Users, label: t('students'), href: '/students' },
         { icon: GraduationCap, label: t('teachers'), href: '/teachers' },
-        { icon: Layers, label: language === 'ar' ? 'الصفوف والشعب' : 'Grades', href: '/grades' },
-        { icon: BookOpen, label: t('subjects'), href: '/subjects' },
+        { icon: Layers, label: language === 'ar' ? 'الفصول والمواد' : 'Classes & Subjects', href: '/grades' },
         { icon: FileText, label: t('exams'), href: '/exams' },
         { icon: UserCheck, label: t('attendance'), href: '/attendance' },
         { icon: Clock, label: language === 'ar' ? 'الجدول' : 'Schedule', href: '/schedule' },
