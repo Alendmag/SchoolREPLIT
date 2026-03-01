@@ -1348,7 +1348,7 @@ async def create_grade(
     }
     
     await db.grades.insert_one(grade_doc)
-    
+    grade_doc.pop("_id", None)
     grade_doc["created_at"] = now
     grade_doc["section_count"] = 0
     grade_doc["student_count"] = 0
