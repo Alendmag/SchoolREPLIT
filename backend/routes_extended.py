@@ -1107,9 +1107,6 @@ async def log_activity(db, user_id: str, school_id: str, action: str, entity_typ
     await db.activity_logs.insert_one(log_doc)
 
 
-# ==================== ONBOARDING ====================
-onboarding_router = APIRouter(prefix="/onboarding", tags=["Onboarding"])
-
 @onboarding_router.post("/complete")
 async def complete_onboarding(data: dict, user: dict = Depends(get_current_user)):
     school_id = user.get("school_id")
