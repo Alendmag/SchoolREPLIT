@@ -29,6 +29,7 @@ levels_router = APIRouter(prefix="/levels", tags=["Academic Levels"])
 onboarding_router = APIRouter(prefix="/onboarding", tags=["Onboarding"])
 notifications_router = APIRouter(prefix="/notifications", tags=["Notifications"])
 export_router = APIRouter(prefix="/reports", tags=["Export Reports"])
+rooms_router = APIRouter(prefix="/rooms", tags=["Rooms"])
 
 
 def generate_id(prefix: str = "") -> str:
