@@ -45,7 +45,7 @@
 
 ## آخر تحديثات مكتملة
 
-### 2025-12
+### 2025-12 - إصلاحات نهائية قبل التسليم
 - إصلاح خطأ إضافة المادة عبر إزالة `_id` الناتج من MongoDB قبل الإرجاع في `create_subject`.
 - إصلاح خطأ إضافة الحصة في الجدول عبر إزالة `_id` وعدم إرجاع datetime خام.
 - دعم `room_id` عند إنشاء حصة وربطه باسم القاعة عند توفره.
@@ -58,6 +58,24 @@
 - إنشاء دليل استخدام وتطوير في `/app/docs/USAGE_DEV_GUIDE.md`.
 - تحديث بيانات الاختبار في `/app/memory/test_credentials.md`.
 - تنفيذ Health Check واختبار API نهائي وإثبات ظهور تبويب أوقات الحصص في الواجهة.
+
+### 2025-12 - إصلاحات Code Review منخفضة المخاطر
+- إزالة fallback الافتراضي لـ `JWT_SECRET` من backend، وأصبح الإعداد يفشل سريعًا إذا غاب المتغير.
+- نقل بيانات اختبار الدخول في `backend/tests/test_school_management.py` إلى environment variables:
+  - `SMS_TEST_SUPER_ADMIN_EMAIL`
+  - `SMS_TEST_SUPER_ADMIN_PASSWORD`
+  - `SMS_TEST_SCHOOL_ADMIN_EMAIL`
+  - `SMS_TEST_SCHOOL_ADMIN_PASSWORD`
+- التحقق من تحذيرات `LanguageContext.js`: النتائج false positives لأنها مفاتيح/نصوص ترجمة وليست أسرارًا أو API keys.
+- توثيق مخاطر `localStorage` ومسار الهجرة إلى httpOnly cookies في `/app/docs/SECURITY_REVIEW.md` دون إعادة تصميم Auth الآن.
+- إصلاح React hook dependency issues منخفضة المخاطر في:
+  - `AuthCallback.js`
+  - `StudentsPage.js`
+  - `TeachersPage.js`
+  - `SchedulePage.js`
+  - `MessagesPage.js`
+- التحقق من مواضع Python `is`: المواضع الحالية كانت مقارنات صحيحة مع `None`، ولا توجد مقارنة literal خاطئة مؤكدة في النطاق المفحوص.
+- إزالة import غير مستخدم `status` من FastAPI في `server.py`.
 
 ## بيانات الاختبار
 - Super Admin: `admin@schoolsms.ly` / `Admin@123`
@@ -76,14 +94,23 @@
 - `DELETE /api/schedule/periods/{period_id}`
 - `GET/PUT /api/schedule/period-times`
 
+## نتائج الاختبار الأحدث
+- تقرير الاختبار: `/app/test_reports/iteration_4.json`.
+- Backend: 21/21 pytest passed.
+- Frontend: تسجيل الدخول وصفحات Schedule/Students/Teachers/Messages/Subjects تعمل بدون console errors.
+- Health check: `/api/health` يرجع 200.
+- Production readiness score الحالي: 8.5/10.
+
 ## Prioritized Backlog
 
 ### P0
-- لا توجد عناصر P0 مفتوحة بعد إصلاح إضافة المواد والحصص وأوقات الحصص.
+- تدوير `JWT_SECRET` إلى قيمة production قوية عبر secret manager قبل الإنتاج النهائي.
 
 ### P1
-- مراجعة نهائية للأذونات على بعض endpoints التي تسمح بتمرير `school_id` من الطلب.
-- إضافة اختبارات regression ثابتة لـ Subjects وSchedule Periods وPeriod Times.
+- الهجرة من تخزين JWT في `localStorage` إلى httpOnly secure cookies بالكامل.
+- تضييق CORS production origin بدل wildcard عند تنفيذ هجرة cookies.
+- مراجعة أذونات `school_id` على بعض endpoints.
+- إضافة regression tests ثابتة لـ Subjects وSchedule Periods وPeriod Times.
 
 ### P2
 - تطبيقات موبايل Android/iOS.
