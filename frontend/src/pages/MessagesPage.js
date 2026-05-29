@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -65,12 +65,7 @@ export default function MessagesPage() {
     message_type: 'general'
   });
 
-  useEffect(() => {
-    fetchMessages();
-    fetchUnreadCount();
-  }, [activeTab]);
-
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     setLoading(true);
     try {
       const params = activeTab === 'sent' ? '?sent=true&inbox=false' : '?inbox=true';
@@ -82,16 +77,21 @@ export default function MessagesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab, api, t]);
 
-  const fetchUnreadCount = async () => {
+  const fetchUnreadCount = useCallback(async () => {
     try {
       const response = await api.get('/messages/unread-count');
       setUnreadCount(response.data.unread_count);
     } catch (error) {
       console.error('Fetch unread count error:', error);
     }
-  };
+  }, [api]);
+
+  useEffect(() => {
+    fetchMessages();
+    fetchUnreadCount();
+  }, [fetchMessages, fetchUnreadCount]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();

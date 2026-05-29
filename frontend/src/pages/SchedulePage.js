@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Card, CardContent } from '../components/ui/card';
@@ -49,10 +49,17 @@ export default function SchedulePage() {
   const [formData, setFormData] = useState({ day: 0, period_number: 1, subject_id: '', teacher_id: '', room_id: '' });
   const [draggedItem, setDraggedItem] = useState(null);
 
-  useEffect(() => { fetchInitialData(); }, []);
-  useEffect(() => { if (selectedSection) fetchSchedule(); }, [selectedSection]);
+  const fetchSchedule = useCallback(async () => {
+    if (!selectedSection) return;
+    try {
+      const response = await api.get(`/schedule/section/${selectedSection}`);
+      setSchedule(response.data || []);
+    } catch (error) {
+      console.error(error);
+    }
+  }, [api, selectedSection]);
 
-  const fetchInitialData = async () => {
+  const fetchInitialData = useCallback(async () => {
     try {
       const [sectionsRes, subjectsRes, teachersRes, roomsRes, periodTimesRes] = await Promise.all([
         api.get('/sections/'),
@@ -72,16 +79,10 @@ export default function SchedulePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [api]);
 
-  const fetchSchedule = async () => {
-    try {
-      const response = await api.get(`/schedule/section/${selectedSection}`);
-      setSchedule(response.data || []);
-    } catch (error) {
-      console.error(error);
-    }
-  };
+  useEffect(() => { fetchInitialData(); }, [fetchInitialData]);
+  useEffect(() => { fetchSchedule(); }, [fetchSchedule]);
 
   // Get teachers for selected subject
   const getTeachersForSubject = useCallback((subjectId) => {

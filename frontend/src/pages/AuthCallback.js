@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -7,7 +7,6 @@ import { toast } from 'sonner';
 export default function AuthCallback() {
   const { processGoogleSession } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const hasProcessed = useRef(false);
 
   useEffect(() => {
@@ -42,7 +41,7 @@ export default function AuthCallback() {
     };
 
     processSession();
-  }, []);
+  }, [navigate, processGoogleSession]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">

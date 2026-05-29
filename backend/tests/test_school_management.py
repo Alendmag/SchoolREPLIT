@@ -9,10 +9,10 @@ import os
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://sms-libya-final.preview.emergentagent.com')
 
 # Test credentials
-SUPER_ADMIN_EMAIL = "admin@schoolsms.ly"
-SUPER_ADMIN_PASSWORD = "Admin@123"
-SCHOOL_ADMIN_EMAIL = "school_admin@test.ly"
-SCHOOL_ADMIN_PASSWORD = "Admin@123"
+SUPER_ADMIN_EMAIL = os.environ["SMS_TEST_SUPER_ADMIN_EMAIL"]
+SUPER_ADMIN_PASSWORD = os.environ["SMS_TEST_SUPER_ADMIN_PASSWORD"]
+SCHOOL_ADMIN_EMAIL = os.environ["SMS_TEST_SCHOOL_ADMIN_EMAIL"]
+SCHOOL_ADMIN_PASSWORD = os.environ["SMS_TEST_SCHOOL_ADMIN_PASSWORD"]
 
 
 class TestHealthCheck:

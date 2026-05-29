@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -66,12 +66,7 @@ export default function StudentsPage() {
   });
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchStudents();
-    fetchGrades();
-  }, []);
-
-  const fetchStudents = async () => {
+  const fetchStudents = useCallback(async () => {
     try {
       const response = await api.get('/students');
       setStudents(response.data);
@@ -81,16 +76,21 @@ export default function StudentsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, t]);
 
-  const fetchGrades = async () => {
+  const fetchGrades = useCallback(async () => {
     try {
       const response = await api.get('/academic/grades');
       setGrades(response.data);
     } catch (error) {
       console.error('Fetch grades error:', error);
     }
-  };
+  }, [api]);
+
+  useEffect(() => {
+    fetchStudents();
+    fetchGrades();
+  }, [fetchStudents, fetchGrades]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

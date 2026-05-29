@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -30,9 +30,7 @@ export default function TeachersPage() {
     subject_ids: [], section_ids: [], grade_ids: []
   });
 
-  useEffect(() => { fetchData(); }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [teachersRes, subjectsRes, sectionsRes, gradesRes] = await Promise.all([
         api.get('/teachers/'),
@@ -49,7 +47,9 @@ export default function TeachersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [api]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
