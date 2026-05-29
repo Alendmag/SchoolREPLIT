@@ -480,6 +480,7 @@ async def register(user_data: UserCreate):
     }
     
     await db.users.insert_one(user_doc)
+    user_doc.pop("_id", None)
     
     # Remove password from response
     user_doc.pop("password")
@@ -682,6 +683,7 @@ async def create_school(
     }
     
     await db.schools.insert_one(school_doc)
+    school_doc.pop("_id", None)
     
     # Create admin user for school
     admin_id = generate_id("user")
@@ -698,6 +700,7 @@ async def create_school(
     }
     
     await db.users.insert_one(admin_doc)
+    admin_doc.pop("_id", None)
     
     school_doc["student_count"] = 0
     school_doc["teacher_count"] = 0
@@ -828,7 +831,7 @@ async def create_license(
     }
     
     await db.licenses.insert_one(license_doc)
-    
+    license_doc.pop("_id", None)
     license_doc["created_at"] = now
     return LicenseResponse(**license_doc)
 
@@ -987,7 +990,7 @@ async def create_student(
         student_doc["user_id"] = user_id
     
     await db.students.insert_one(student_doc)
-    
+    student_doc.pop("_id", None)
     student_doc["created_at"] = now
     return StudentResponse(**student_doc)
 
@@ -1096,6 +1099,7 @@ async def create_teacher(
         "created_at": now.isoformat()
     }
     await db.users.insert_one(user_doc)
+    user_doc.pop("_id", None)
     
     teacher_doc = {
         "teacher_id": teacher_id,
@@ -1116,7 +1120,7 @@ async def create_teacher(
     }
     
     await db.teachers.insert_one(teacher_doc)
-    
+    teacher_doc.pop("_id", None)
     teacher_doc["created_at"] = now
     return TeacherResponse(**teacher_doc)
 
@@ -1189,7 +1193,7 @@ async def create_invoice(
     }
     
     await db.invoices.insert_one(invoice_doc)
-    
+    invoice_doc.pop("_id", None)
     invoice_doc["created_at"] = now
     return InvoiceResponse(**invoice_doc)
 
@@ -1250,6 +1254,7 @@ async def create_payment(
     }
     
     await db.payments.insert_one(payment_doc)
+    payment_doc.pop("_id", None)
     
     # Update invoice
     new_paid = invoice.get("paid_amount", 0) + payment_data.amount
@@ -1401,7 +1406,7 @@ async def create_subject(
     }
     
     await db.subjects.insert_one(subject_doc)
-    
+    subject_doc.pop("_id", None)
     subject_doc["created_at"] = now
     return SubjectResponse(**subject_doc)
 
@@ -1426,7 +1431,7 @@ async def list_subjects(
     result = []
     for subject in subjects:
         if isinstance(subject.get("created_at"), str):
-            subject["created_at"] = datetime.fromisoformat(subject["created_at"])
+            subject["created_at"] = datetime.fromisoformat(subject["created_at"].replace("Z", "+00:00"))
         result.append(SubjectResponse(**subject))
     
     return result
@@ -1454,7 +1459,7 @@ async def create_exam(
     }
     
     await db.exams.insert_one(exam_doc)
-    
+    exam_doc.pop("_id", None)
     exam_doc["created_at"] = now
     return ExamResponse(**exam_doc)
 
@@ -1510,7 +1515,7 @@ async def record_attendance(
     }
     
     await db.attendance.insert_one(attendance_doc)
-    
+    attendance_doc.pop("_id", None)
     attendance_doc["created_at"] = now
     return AttendanceResponse(**attendance_doc)
 
@@ -1570,6 +1575,7 @@ async def create_notification(
     }
     
     await db.notifications.insert_one(notification_doc)
+    notification_doc.pop("_id", None)
     
     # TODO: Send SMS if requested (Twilio integration)
     if notification_data.send_sms:

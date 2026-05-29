@@ -36,6 +36,39 @@ def generate_id(prefix: str = "") -> str:
     return f"{prefix}_{uuid.uuid4().hex[:12]}" if prefix else uuid.uuid4().hex[:12]
 
 
+DEFAULT_PERIOD_TIMES = [
+    {"number": 1, "start": "07:30", "end": "08:15"},
+    {"number": 2, "start": "08:20", "end": "09:05"},
+    {"number": 3, "start": "09:10", "end": "09:55"},
+    {"number": 4, "start": "10:10", "end": "10:55"},
+    {"number": 5, "start": "11:00", "end": "11:45"},
+    {"number": 6, "start": "11:50", "end": "12:35"},
+    {"number": 7, "start": "12:40", "end": "13:25"},
+    {"number": 8, "start": "13:30", "end": "14:15"},
+    {"number": 9, "start": "14:20", "end": "15:05"},
+]
+
+
+def build_default_period_times(school_id: str):
+    return [
+        {
+            "period_number": period["number"],
+            "school_id": school_id,
+            "start_time": period["start"],
+            "end_time": period["end"],
+        }
+        for period in DEFAULT_PERIOD_TIMES
+    ]
+
+
+def merge_period_times(school_id: str, saved_times: list):
+    saved_by_number = {item.get("period_number"): item for item in saved_times}
+    merged = []
+    for default_time in build_default_period_times(school_id):
+        saved_time = saved_by_number.get(default_time["period_number"])
+        merged.append({**default_time, **saved_time} if saved_time else default_time)
+    return merged
+
 def setup_extended_routes(db, get_current_user, require_roles, UserRole):
     """Setup all extended routes with database and auth dependencies"""
     
@@ -66,6 +99,7 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         }
         
         await db.sections.insert_one(section_doc)
+        section_doc.pop("_id", None)
         
         # Log activity
         await log_activity(db, user["user_id"], school_id, "created", "section", section_id)
@@ -216,6 +250,12 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         now = datetime.now(timezone.utc)
         
         school_id = period_data.get("school_id") or user.get("school_id")
+        room_id = period_data.get("room_id")
+        room_name = period_data.get("room")
+        if room_id:
+            room = await db.rooms.find_one({"room_id": room_id}, {"_id": 0, "name": 1, "name_ar": 1})
+            if room:
+                room_name = room.get("name_ar") or room.get("name")
         
         period_doc = {
             "period_id": period_id,
@@ -227,13 +267,59 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
             "subject_id": period_data.get("subject_id"),
             "teacher_id": period_data.get("teacher_id"),
             "section_id": period_data.get("section_id"),
-            "room": period_data.get("room"),
+            "room_id": room_id,
+            "room": room_name,
             "created_at": now.isoformat()
         }
         
         await db.schedule_periods.insert_one(period_doc)
-        period_doc["created_at"] = now
+        period_doc.pop("_id", None)
         return period_doc
+
+    @schedule_router.get("/period-times")
+    async def list_period_times(user: dict = Depends(get_current_user)):
+        school_id = user.get("school_id")
+        saved_times = await db.period_times.find({"school_id": school_id}, {"_id": 0}).to_list(20)
+        return merge_period_times(school_id, saved_times)
+
+    @schedule_router.put("/period-times")
+    async def update_period_times(times_data: dict, user: dict = Depends(get_current_user)):
+        if user["role"] not in [UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SCHOOL_MANAGER]:
+            raise HTTPException(status_code=403, detail="غير مصرح")
+
+        school_id = user.get("school_id") or times_data.get("school_id")
+        times = times_data.get("periods", [])
+        if len(times) != 9:
+            raise HTTPException(status_code=400, detail="يجب تحديد أوقات 9 حصص")
+
+        now = datetime.now(timezone.utc).isoformat()
+        cleaned_times = []
+        for item in times:
+            period_number = int(item.get("period_number"))
+            if period_number < 1 or period_number > 9:
+                raise HTTPException(status_code=400, detail="رقم الحصة غير صحيح")
+            if not item.get("start_time") or not item.get("end_time"):
+                raise HTTPException(status_code=400, detail="وقت البداية والنهاية مطلوبان")
+            period_time = {
+                "school_id": school_id,
+                "period_number": period_number,
+                "start_time": item.get("start_time"),
+                "end_time": item.get("end_time"),
+                "updated_at": now,
+            }
+            await db.period_times.update_one(
+                {"school_id": school_id, "period_number": period_number},
+                {"$set": period_time},
+                upsert=True
+            )
+            cleaned_times.append(period_time)
+
+        for period_time in cleaned_times:
+            await db.schedule_periods.update_many(
+                {"school_id": school_id, "period_number": period_time["period_number"]},
+                {"$set": {"start_time": period_time["start_time"], "end_time": period_time["end_time"]}}
+            )
+        return merge_period_times(school_id, cleaned_times)
     
     @schedule_router.get("/section/{section_id}")
     async def get_section_schedule(
@@ -373,6 +459,7 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         }
         
         await db.assignments.insert_one(assignment_doc)
+        assignment_doc.pop("_id", None)
         assignment_doc["created_at"] = now
         assignment_doc["submission_count"] = 0
         return assignment_doc
@@ -1093,6 +1180,7 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         }
         
         await db.parent_student_links.insert_one(link_doc)
+        link_doc.pop("_id", None)
         link_doc["created_at"] = now
         return link_doc
     

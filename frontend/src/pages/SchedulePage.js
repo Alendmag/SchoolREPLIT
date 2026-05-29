@@ -7,7 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
-import { Calendar, Clock, Plus, Loader2, BookOpen, Users, Trash2, GripVertical } from 'lucide-react';
+import { Input } from '../components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Calendar, Clock, Plus, Loader2, BookOpen, Trash2, GripVertical, Save } from 'lucide-react';
 import { toast } from 'sonner';
 
 const DAYS = [
@@ -18,16 +20,16 @@ const DAYS = [
   { en: 'Thursday', ar: 'الخميس' },
 ];
 
-const PERIODS = [
-  { number: 1, start: '07:30', end: '08:15' },
-  { number: 2, start: '08:20', end: '09:05' },
-  { number: 3, start: '09:10', end: '09:55' },
-  { number: 4, start: '10:10', end: '10:55' },
-  { number: 5, start: '11:00', end: '11:45' },
-  { number: 6, start: '11:50', end: '12:35' },
-  { number: 7, start: '12:40', end: '13:25' },
-  { number: 8, start: '13:30', end: '14:15' },
-  { number: 9, start: '14:20', end: '15:05' },
+const DEFAULT_PERIODS = [
+  { period_number: 1, start_time: '07:30', end_time: '08:15' },
+  { period_number: 2, start_time: '08:20', end_time: '09:05' },
+  { period_number: 3, start_time: '09:10', end_time: '09:55' },
+  { period_number: 4, start_time: '10:10', end_time: '10:55' },
+  { period_number: 5, start_time: '11:00', end_time: '11:45' },
+  { period_number: 6, start_time: '11:50', end_time: '12:35' },
+  { period_number: 7, start_time: '12:40', end_time: '13:25' },
+  { period_number: 8, start_time: '13:30', end_time: '14:15' },
+  { period_number: 9, start_time: '14:20', end_time: '15:05' },
 ];
 
 export default function SchedulePage() {
@@ -38,10 +40,12 @@ export default function SchedulePage() {
   const [subjects, setSubjects] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [rooms, setRooms] = useState([]);
+  const [periodTimes, setPeriodTimes] = useState(DEFAULT_PERIODS);
   const [loading, setLoading] = useState(true);
   const [selectedSection, setSelectedSection] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [savingTimes, setSavingTimes] = useState(false);
   const [formData, setFormData] = useState({ day: 0, period_number: 1, subject_id: '', teacher_id: '', room_id: '' });
   const [draggedItem, setDraggedItem] = useState(null);
 
@@ -50,16 +54,18 @@ export default function SchedulePage() {
 
   const fetchInitialData = async () => {
     try {
-      const [sectionsRes, subjectsRes, teachersRes, roomsRes] = await Promise.all([
+      const [sectionsRes, subjectsRes, teachersRes, roomsRes, periodTimesRes] = await Promise.all([
         api.get('/sections/'),
         api.get('/academic/subjects/'),
         api.get('/teachers/'),
-        api.get('/rooms/').catch(() => ({ data: [] }))
+        api.get('/rooms/').catch(() => ({ data: [] })),
+        api.get('/schedule/period-times').catch(() => ({ data: DEFAULT_PERIODS }))
       ]);
       setSections(sectionsRes.data || []);
       setSubjects(subjectsRes.data || []);
       setTeachers(teachersRes.data || []);
       setRooms(roomsRes.data || []);
+      setPeriodTimes(periodTimesRes.data?.length ? periodTimesRes.data : DEFAULT_PERIODS);
       if (sectionsRes.data?.length > 0) setSelectedSection(sectionsRes.data[0].section_id);
     } catch (error) {
       console.error(error);
@@ -87,13 +93,13 @@ export default function SchedulePage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const period = PERIODS[formData.period_number - 1];
+      const period = periodTimes.find((item) => item.period_number === formData.period_number);
       await api.post('/schedule/periods', {
         ...formData,
         section_id: selectedSection,
         school_id: user.school_id,
-        start_time: period?.start,
-        end_time: period?.end
+        start_time: period?.start_time,
+        end_time: period?.end_time
       });
       toast.success(language === 'ar' ? 'تم إضافة الحصة' : 'Period added');
       setDialogOpen(false);
@@ -103,6 +109,26 @@ export default function SchedulePage() {
       toast.error(language === 'ar' ? 'حدث خطأ' : 'Error');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handlePeriodTimeChange = (periodNumber, field, value) => {
+    setPeriodTimes((prev) => prev.map((period) => (
+      period.period_number === periodNumber ? { ...period, [field]: value } : period
+    )));
+  };
+
+  const handleSavePeriodTimes = async () => {
+    setSavingTimes(true);
+    try {
+      const response = await api.put('/schedule/period-times', { periods: periodTimes });
+      setPeriodTimes(response.data || periodTimes);
+      if (selectedSection) fetchSchedule();
+      toast.success(language === 'ar' ? 'تم حفظ أوقات الحصص' : 'Period times saved');
+    } catch (error) {
+      toast.error(language === 'ar' ? 'تعذر حفظ أوقات الحصص' : 'Could not save period times');
+    } finally {
+      setSavingTimes(false);
     }
   };
 
@@ -133,13 +159,13 @@ export default function SchedulePage() {
     if (!draggedItem) return;
     
     try {
-      // Update the dragged item's position
+      const period = periodTimes.find((item) => item.period_number === periodNumber);
       await api.put(`/schedule/periods/${draggedItem.period_id}`, {
         ...draggedItem,
         day: day,
         period_number: periodNumber,
-        start_time: PERIODS[periodNumber - 1]?.start,
-        end_time: PERIODS[periodNumber - 1]?.end
+        start_time: period?.start_time,
+        end_time: period?.end_time
       });
       toast.success(language === 'ar' ? 'تم نقل الحصة' : 'Period moved');
       fetchSchedule();
@@ -175,67 +201,108 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      <Card>
-        <CardContent className="p-0 overflow-x-auto">
-          <table className="w-full min-w-[900px]">
-            <thead>
-              <tr className="border-b">
-                <th className="p-3 text-start bg-muted/50 w-24">{language === 'ar' ? 'الحصة' : 'Period'}</th>
-                {DAYS.map((day, i) => (
-                  <th key={i} className="p-3 text-center bg-muted/50 min-w-[140px]">{language === 'ar' ? day.ar : day.en}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {PERIODS.map((period) => (
-                <tr key={period.number} className="border-b hover:bg-muted/20">
-                  <td className="p-2 bg-muted/30 text-center">
-                    <div className="font-medium text-sm">{period.number}</div>
-                    <div className="text-xs text-muted-foreground">{period.start}</div>
-                    <div className="text-xs text-muted-foreground">{period.end}</div>
-                  </td>
-                  {DAYS.map((_, dayIndex) => {
-                    const periodData = getPeriodData(dayIndex, period.number);
-                    const subject = subjects.find(s => s.subject_id === periodData?.subject_id);
-                    const teacher = teachers.find(t => t.teacher_id === periodData?.teacher_id);
-                    const room = rooms.find(r => r.room_id === periodData?.room_id);
-                    
-                    return (
-                      <td 
-                        key={dayIndex} 
-                        className="p-1"
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, dayIndex, period.number)}
-                      >
-                        {periodData ? (
-                          <div 
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, periodData)}
-                            className="p-2 rounded-lg bg-primary/10 border border-primary/20 cursor-grab active:cursor-grabbing group relative"
-                          >
-                            <div className="absolute top-1 start-1 opacity-0 group-hover:opacity-100"><GripVertical className="w-3 h-3 text-muted-foreground" /></div>
-                            <p className="font-medium text-sm text-center">{subject?.name_ar || subject?.name || periodData.subject_name || '-'}</p>
-                            <p className="text-xs text-muted-foreground text-center mt-1">{teacher?.name_ar || teacher?.name || periodData.teacher_name || ''}</p>
-                            {(room || periodData.room) && <Badge variant="outline" className="mt-1 text-xs w-full justify-center">{room?.name_ar || room?.name || periodData.room}</Badge>}
-                            <button onClick={() => handleDeletePeriod(periodData.period_id)} className="absolute top-1 end-1 opacity-0 group-hover:opacity-100 text-destructive"><Trash2 className="w-3 h-3" /></button>
-                          </div>
-                        ) : (
-                          <div 
-                            onClick={() => openAddDialog(dayIndex, period.number)}
-                            className="p-4 rounded-lg border-2 border-dashed border-muted-foreground/20 text-center text-muted-foreground text-sm cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors"
-                          >
-                            <Plus className="w-4 h-4 mx-auto" />
-                          </div>
-                        )}
+      <Tabs defaultValue="schedule" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="schedule"><Calendar className="w-4 h-4 me-1" />{language === 'ar' ? 'الجدول' : 'Schedule'}</TabsTrigger>
+          <TabsTrigger value="period-times"><Clock className="w-4 h-4 me-1" />{language === 'ar' ? 'أوقات الحصص' : 'Period Times'}</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="schedule">
+          <Card>
+            <CardContent className="p-0 overflow-x-auto">
+              <table className="w-full min-w-[900px]">
+                <thead>
+                  <tr className="border-b">
+                    <th className="p-3 text-start bg-muted/50 w-24">{language === 'ar' ? 'الحصة' : 'Period'}</th>
+                    {DAYS.map((day, i) => (
+                      <th key={i} className="p-3 text-center bg-muted/50 min-w-[140px]">{language === 'ar' ? day.ar : day.en}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {periodTimes.map((period) => (
+                    <tr key={period.period_number} className="border-b hover:bg-muted/20">
+                      <td className="p-2 bg-muted/30 text-center">
+                        <div className="font-medium text-sm">{period.period_number}</div>
+                        <div className="text-xs text-muted-foreground">{period.start_time}</div>
+                        <div className="text-xs text-muted-foreground">{period.end_time}</div>
                       </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
+                      {DAYS.map((_, dayIndex) => {
+                        const periodData = getPeriodData(dayIndex, period.period_number);
+                        const subject = subjects.find(s => s.subject_id === periodData?.subject_id);
+                        const teacher = teachers.find(t => t.teacher_id === periodData?.teacher_id);
+                        const room = rooms.find(r => r.room_id === periodData?.room_id);
+                        
+                        return (
+                          <td 
+                            key={dayIndex} 
+                            className="p-1"
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, dayIndex, period.period_number)}
+                          >
+                            {periodData ? (
+                              <div 
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, periodData)}
+                                className="p-2 rounded-lg bg-primary/10 border border-primary/20 cursor-grab active:cursor-grabbing group relative"
+                              >
+                                <div className="absolute top-1 start-1 opacity-0 group-hover:opacity-100"><GripVertical className="w-3 h-3 text-muted-foreground" /></div>
+                                <p className="font-medium text-sm text-center">{subject?.name_ar || subject?.name || periodData.subject_name || '-'}</p>
+                                <p className="text-xs text-muted-foreground text-center mt-1">{teacher?.name_ar || teacher?.name || periodData.teacher_name || ''}</p>
+                                {(room || periodData.room) && <Badge variant="outline" className="mt-1 text-xs w-full justify-center">{room?.name_ar || room?.name || periodData.room}</Badge>}
+                                <button onClick={() => handleDeletePeriod(periodData.period_id)} className="absolute top-1 end-1 opacity-0 group-hover:opacity-100 text-destructive"><Trash2 className="w-3 h-3" /></button>
+                              </div>
+                            ) : (
+                              <div 
+                                onClick={() => openAddDialog(dayIndex, period.period_number)}
+                                className="p-4 rounded-lg border-2 border-dashed border-muted-foreground/20 text-center text-muted-foreground text-sm cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                              >
+                                <Plus className="w-4 h-4 mx-auto" />
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="period-times">
+          <Card>
+            <CardContent className="p-5 space-y-4">
+              <div>
+                <h2 className="text-lg font-semibold">{language === 'ar' ? 'أوقات الحصص اليومية' : 'Daily period times'}</h2>
+                <p className="text-sm text-muted-foreground mt-1">{language === 'ar' ? 'اضبط وقت البداية والنهاية لكل حصة من الحصص التسع.' : 'Set the start and end time for each of the nine periods.'}</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {periodTimes.map((period) => (
+                  <div key={period.period_number} className="rounded-lg border p-4 space-y-3">
+                    <div className="font-medium">{language === 'ar' ? 'الحصة' : 'Period'} {period.period_number}</div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label>{language === 'ar' ? 'البداية' : 'Start'}</Label>
+                        <Input type="time" value={period.start_time || ''} onChange={(e) => handlePeriodTimeChange(period.period_number, 'start_time', e.target.value)} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>{language === 'ar' ? 'النهاية' : 'End'}</Label>
+                        <Input type="time" value={period.end_time || ''} onChange={(e) => handlePeriodTimeChange(period.period_number, 'end_time', e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Button onClick={handleSavePeriodTimes} disabled={savingTimes}>
+                {savingTimes ? <Loader2 className="w-4 h-4 me-2 animate-spin" /> : <Save className="w-4 h-4 me-2" />}
+                {language === 'ar' ? 'حفظ أوقات الحصص' : 'Save period times'}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
@@ -254,7 +321,7 @@ export default function SchedulePage() {
                   <Label>{language === 'ar' ? 'الحصة' : 'Period'}</Label>
                   <Select value={formData.period_number.toString()} onValueChange={(v) => setFormData({ ...formData, period_number: parseInt(v) })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{PERIODS.map(p => <SelectItem key={p.number} value={p.number.toString()}>{p.number} ({p.start}-{p.end})</SelectItem>)}</SelectContent>
+                    <SelectContent>{periodTimes.map(p => <SelectItem key={p.period_number} value={p.period_number.toString()}>{p.period_number} ({p.start_time}-{p.end_time})</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
               </div>
