@@ -28,8 +28,8 @@
 
 ### الصفحات الرئيسية
 - [x] لوحة التحكم.
-- [x] الطلاب CRUD + بحث.
-- [x] المعلمون CRUD + تعيين المواد والشعب.
+- [x] الطلاب CRUD + بحث + اختيار الصف والشعبة.
+- [x] المعلمون CRUD + تعيين المواد/الصفوف/الشعب من بيانات APIs.
 - [x] الفصول والمواد: المراحل، الصفوف، الشعب، المواد، القاعات.
 - [x] الاختبارات.
 - [x] الحضور.
@@ -49,67 +49,73 @@
 - إصلاح خطأ إضافة المادة عبر إزالة `_id` الناتج من MongoDB قبل الإرجاع في `create_subject`.
 - إصلاح خطأ إضافة الحصة في الجدول عبر إزالة `_id` وعدم إرجاع datetime خام.
 - دعم `room_id` عند إنشاء حصة وربطه باسم القاعة عند توفره.
-- إضافة API لأوقات الحصص:
-  - `GET /api/schedule/period-times`
-  - `PUT /api/schedule/period-times`
-- إضافة تبويب **أوقات الحصص** في صفحة الجدول لتعديل بداية ونهاية الحصص التسع.
-- تحديث الجدول ليقرأ أوقات الحصص المحفوظة بدل القيم الثابتة فقط.
-- إنشاء README عربي شامل.
-- إنشاء دليل استخدام وتطوير في `/app/docs/USAGE_DEV_GUIDE.md`.
-- تحديث بيانات الاختبار في `/app/memory/test_credentials.md`.
-- تنفيذ Health Check واختبار API نهائي وإثبات ظهور تبويب أوقات الحصص في الواجهة.
+- إضافة API لأوقات الحصص: `GET/PUT /api/schedule/period-times`.
+- إضافة تبويب **أوقات الحصص** في صفحة الجدول.
+- إنشاء README ودليل استخدام وتطوير.
 
 ### 2025-12 - إصلاحات Code Review منخفضة المخاطر
-- إزالة fallback الافتراضي لـ `JWT_SECRET` من backend، وأصبح الإعداد يفشل سريعًا إذا غاب المتغير.
+- إزالة fallback الافتراضي لـ `JWT_SECRET` من backend.
 - نقل بيانات اختبار الدخول في `backend/tests/test_school_management.py` إلى environment variables.
-- التحقق من تحذيرات `LanguageContext.js`: النتائج false positives لأنها مفاتيح/نصوص ترجمة وليست أسرارًا أو API keys.
-- توثيق مخاطر `localStorage` ومسار الهجرة إلى httpOnly cookies في `/app/docs/SECURITY_REVIEW.md` دون إعادة تصميم Auth الآن.
-- إصلاح React hook dependency issues منخفضة المخاطر في AuthCallback/Students/Teachers/Schedule/Messages.
-- التحقق من مواضع Python `is`: المواضع الحالية كانت مقارنات صحيحة مع `None`، ولا توجد مقارنة literal خاطئة مؤكدة في النطاق المفحوص.
-- إزالة import غير مستخدم `status` من FastAPI في `server.py`.
+- توثيق false positives في `LanguageContext.js` ومخاطر localStorage في `/app/docs/SECURITY_REVIEW.md`.
+- إصلاح React hook dependency issues منخفضة المخاطر.
 
 ### 2025-12 - تدوير JWT_SECRET قبل الإنتاج
-- توليد JWT_SECRET قوي cryptographically secure بطول 86 حرفًا باستخدام `secrets.token_urlsafe(64)`.
-- تخزين السر في `/app/backend/.env` فقط ضمن متغير البيئة `JWT_SECRET`.
+- توليد JWT_SECRET قوي وتخزينه في `/app/backend/.env` فقط.
 - التحقق من عدم وجود hardcoded fallback secret في الكود.
-- إعادة تشغيل backend بعد التدوير.
-- تنفيذ smoke tests بعد التدوير:
-  - `/api/health`: 200.
-  - Login: ناجح.
-  - Token generation: يحتوي `sub`, `role`, `exp`.
-  - Protected endpoint `/api/auth/me`: 200.
-- Deployment health readiness: لا توجد blockers؛ توجد warnings تحسين DB/CORS مؤجلة.
+- smoke tests بعد التدوير: health/login/token/auth-me كلها ناجحة.
+
+### 2025-12 - Phase 1 + Phase 2: إصلاح إنشاء الكيانات من UI
+- إصلاح سلسلة الإنشاء من الواجهة الفعلية:
+  - Level
+  - Grade
+  - Section
+  - Subject
+  - Room
+  - Teacher
+  - Student
+- `GradeBase` أصبح يدعم `level_id` مع `level` افتراضي لتطابق payload الواجهة.
+- `GradesPage.js` أصبح يضيف `level` المشتق من المرحلة المختارة ويطبع numeric fields قبل الإرسال.
+- `StudentsPage.js` أصبح يحول الحقول الاختيارية الفارغة إلى `null` بدل `""`، ويضيف dropdown للشعبة مرتبطًا بالصف.
+- `TeachersPage.js` أصبح يرسل `subject_ids`, `grade_ids`, `section_ids` من checkboxes محملة من APIs.
+- `TeacherBase` و`TeacherResponse` و`create_teacher` أصبحت تحفظ وتعيد علاقات المعلم.
+- تم التحقق من الواجهة الفعلية عبر Playwright: كل POSTs رجعت 200 بدون 422/500.
+- Testing Agent iteration 5 أكد: UI create 7/7 ناجح، backend tests 30/30 ناجحة، ولا توجد console errors.
 
 ## بيانات الاختبار
 - Super Admin: `admin@schoolsms.ly` / `Admin@123`
 - School Admin: `school_admin@test.ly` / `Admin@123`
 
 ## نتائج الاختبار الأحدث
-- تقرير الاختبار: `/app/test_reports/iteration_4.json`.
-- Backend: 21/21 pytest passed.
-- Frontend: تسجيل الدخول وصفحات Schedule/Students/Teachers/Messages/Subjects تعمل بدون console errors.
-- Health check بعد تدوير JWT_SECRET: 200.
-- Production readiness score الحالي: 8.7/10.
+- تقرير الاختبار: `/app/test_reports/iteration_5.json`.
+- Backend: 30/30 pytest passed.
+- Frontend UI: Level → Grade → Section → Subject → Room → Teacher → Student كلها تنشأ بنجاح من React UI.
+- لا توجد 422/500 في مسارات الإنشاء بعد الإصلاح.
+
+## Root Causes المغلقة
+- Grades: الواجهة كانت ترسل `level_id` بينما backend كان يتطلب `level` رقميًا؛ أدى إلى 422، ثم تم دعم الحقلين.
+- Students: الواجهة كانت ترسل email اختياريًا كـ empty string، و`Optional[EmailStr]` يرفضه؛ تم تحويل الفراغ إلى `null`.
+- Teachers: علاقات المواد/الصفوف/الشعب لم تكن محفوظة في backend؛ تم دعمها في schema والـ response والتخزين.
+- Levels/Sections/Subjects/Rooms: تم التحقق من `school_id` وMongo serialization والـ response، وتعمل ضمن السلسلة من UI؛ أي فشل سابق كان مرتبطًا بمسار الصفحة المشترك واعتماد الكيانات على نجاح Grade/Subject.
 
 ## Prioritized Backlog
 
 ### P0
-- لا توجد عناصر P0 مفتوحة بعد تدوير JWT_SECRET، بشرط حفظ secret production خارج Git عند النشر.
+- لا يوجد P0 مفتوح لإنشاء الكيانات بعد iteration 5.
 
 ### P1
 - الهجرة من تخزين JWT في `localStorage` إلى httpOnly secure cookies بالكامل.
 - تضييق CORS production origin بدل wildcard عند تنفيذ هجرة cookies.
 - مراجعة أذونات `school_id` على بعض endpoints.
 - تحسين projections لبعض dashboard/finance queries كما أشار deployment health check.
-- إضافة regression tests ثابتة لـ Subjects وSchedule Periods وPeriod Times.
+- إزالة 307 redirects الاختيارية بتوحيد trailing slashes في frontend/backend.
 
 ### P2
 - تطبيقات موبايل Android/iOS.
 - لوحات تحكم قابلة للتخصيص بالسحب والإفلات.
-- فصل `routes_extended.py` إلى ملفات routes أصغر عند توفر رصيد كافٍ.
+- فصل `routes_extended.py` و`GradesPage.js` إلى وحدات أصغر عند توفر رصيد كافٍ.
 
 ## ملاحظات تشغيل
-- استخدم زر **Save to Github** في Emergent للمزامنة مع GitHub.
+- لا تستأنف النشر حتى يوافق المستخدم صراحة.
+- استخدم زر **Save to Github** في Emergent عند طلب المستخدم.
 - يجب عدم رفع `.env` إلى GitHub.
-- لا تغيّر المنافذ أو أسماء متغيرات البيئة المحمية.
 - يجب استبعاد `_id` من أي response قادم من MongoDB.
