@@ -73,16 +73,32 @@ export default function GradesPage() {
     setDialogOpen(true);
   };
 
+  const buildPayload = () => {
+    const payload = { ...formData, school_id: user.school_id };
+    if (dialogType === 'grade') {
+      const selectedLevel = levels.find((level) => level.level_id === formData.level_id);
+      payload.level = selectedLevel?.order || levels.findIndex((level) => level.level_id === formData.level_id) + 1 || 1;
+    }
+    if (dialogType === 'subject') {
+      payload.credits = Number(payload.credits || 1);
+    }
+    if (dialogType === 'room') {
+      payload.capacity = Number(payload.capacity || 30);
+    }
+    return payload;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     try {
       const endpoints = { level: '/levels/', grade: '/academic/grades/', section: '/sections/', subject: '/academic/subjects/', room: '/rooms/' };
+      const payload = buildPayload();
       if (editMode) {
-        await api.put(`${endpoints[dialogType]}${editId}`, { ...formData, school_id: user.school_id });
+        await api.put(`${endpoints[dialogType]}${editId}`, payload);
         toast.success(language === 'ar' ? 'تم التحديث بنجاح' : 'Updated successfully');
       } else {
-        await api.post(endpoints[dialogType], { ...formData, school_id: user.school_id });
+        await api.post(endpoints[dialogType], payload);
         toast.success(language === 'ar' ? 'تم الإضافة بنجاح' : 'Added successfully');
       }
       setDialogOpen(false);

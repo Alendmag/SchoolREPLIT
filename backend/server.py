@@ -182,6 +182,9 @@ class TeacherBase(BaseModel):
     hire_date: Optional[str] = None
     status: str = "active"
     avatar: Optional[str] = None
+    subject_ids: List[str] = []
+    grade_ids: List[str] = []
+    section_ids: List[str] = []
 
 class TeacherCreate(TeacherBase):
     school_id: str
@@ -193,6 +196,9 @@ class TeacherResponse(TeacherBase):
     user_id: str
     subjects: List[str] = []
     classes: List[str] = []
+    subject_ids: List[str] = []
+    grade_ids: List[str] = []
+    section_ids: List[str] = []
     created_at: datetime
 
 class InvoiceBase(BaseModel):
@@ -253,7 +259,8 @@ class NotificationResponse(NotificationBase):
 class GradeBase(BaseModel):
     name: str
     name_ar: str
-    level: int
+    level: int = 1
+    level_id: Optional[str] = None
     description: Optional[str] = None
 
 class GradeCreate(GradeBase):
@@ -1114,8 +1121,11 @@ async def create_teacher(
         "hire_date": teacher_data.hire_date or now.strftime("%Y-%m-%d"),
         "status": teacher_data.status,
         "avatar": teacher_data.avatar,
-        "subjects": [],
-        "classes": [],
+        "subjects": teacher_data.subject_ids,
+        "classes": teacher_data.section_ids,
+        "subject_ids": teacher_data.subject_ids,
+        "grade_ids": teacher_data.grade_ids,
+        "section_ids": teacher_data.section_ids,
         "created_at": now.isoformat()
     }
     
@@ -1348,6 +1358,7 @@ async def create_grade(
         "name": grade_data.name,
         "name_ar": grade_data.name_ar,
         "level": grade_data.level,
+        "level_id": grade_data.level_id,
         "description": grade_data.description,
         "created_at": now.isoformat()
     }

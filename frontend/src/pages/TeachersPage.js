@@ -55,7 +55,7 @@ export default function TeachersPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await api.post('/teachers/', { ...formData, school_id: user.school_id });
+      await api.post('/teachers/', buildTeacherPayload());
       toast.success(language === 'ar' ? 'تم إضافة المعلم بنجاح' : 'Teacher added successfully');
       setDialogOpen(false);
       fetchData();
@@ -84,6 +84,23 @@ export default function TeachersPage() {
   };
 
   const toggleArrayItem = (arr, item) => arr.includes(item) ? arr.filter(i => i !== item) : [...arr, item];
+
+  const cleanOptional = (value) => {
+    if (typeof value === 'string' && value.trim() === '') return null;
+    return value;
+  };
+
+  const buildTeacherPayload = () => ({
+    ...formData,
+    phone: cleanOptional(formData.phone),
+    specialization: cleanOptional(formData.specialization),
+    qualification: cleanOptional(formData.qualification),
+    hire_date: cleanOptional(formData.hire_date),
+    subject_ids: formData.subject_ids,
+    grade_ids: formData.grade_ids,
+    section_ids: formData.section_ids,
+    school_id: user.school_id,
+  });
 
   const filteredTeachers = teachers.filter(t => 
     t.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||

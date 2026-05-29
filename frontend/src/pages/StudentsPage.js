@@ -49,6 +49,7 @@ export default function StudentsPage() {
   const { t, language } = useLanguage();
   const [students, setStudents] = useState([]);
   const [grades, setGrades] = useState([]);
+  const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -62,6 +63,7 @@ export default function StudentsPage() {
     gender: 'male',
     national_id: '',
     grade_id: '',
+    section_id: '',
     password: '',
   });
   const [submitting, setSubmitting] = useState(false);
@@ -80,8 +82,12 @@ export default function StudentsPage() {
 
   const fetchGrades = useCallback(async () => {
     try {
-      const response = await api.get('/academic/grades');
-      setGrades(response.data);
+      const [gradesRes, sectionsRes] = await Promise.all([
+        api.get('/academic/grades'),
+        api.get('/sections/')
+      ]);
+      setGrades(gradesRes.data);
+      setSections(sectionsRes.data || []);
     } catch (error) {
       console.error('Fetch grades error:', error);
     }
@@ -92,15 +98,29 @@ export default function StudentsPage() {
     fetchGrades();
   }, [fetchStudents, fetchGrades]);
 
+  const cleanOptional = (value) => {
+    if (typeof value === 'string' && value.trim() === '') return null;
+    return value;
+  };
+
+  const buildStudentPayload = () => ({
+    ...formData,
+    email: cleanOptional(formData.email),
+    phone: cleanOptional(formData.phone),
+    date_of_birth: cleanOptional(formData.date_of_birth),
+    national_id: cleanOptional(formData.national_id),
+    grade_id: cleanOptional(formData.grade_id),
+    section_id: cleanOptional(formData.section_id),
+    password: formData.password?.trim() || null,
+    school_id: user.school_id,
+  });
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
 
     try {
-      await api.post('/students', {
-        ...formData,
-        school_id: user.school_id,
-      });
+      await api.post('/students/', buildStudentPayload());
       toast.success(language === 'ar' ? 'تم إضافة الطالب بنجاح' : 'Student added successfully');
       setDialogOpen(false);
       fetchStudents();
@@ -113,6 +133,7 @@ export default function StudentsPage() {
         gender: 'male',
         national_id: '',
         grade_id: '',
+        section_id: '',
         password: '',
       });
     } catch (error) {
@@ -281,6 +302,24 @@ export default function StudentsPage() {
                       {grades.map((grade) => (
                         <SelectItem key={grade.grade_id} value={grade.grade_id}>
                           {grade.name_ar || grade.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="section_id">{language === 'ar' ? 'الشعبة' : 'Section'}</Label>
+                  <Select
+                    value={formData.section_id}
+                    onValueChange={(value) => setFormData({ ...formData, section_id: value })}
+                  >
+                    <SelectTrigger data-testid="student-section-select">
+                      <SelectValue placeholder={language === 'ar' ? 'اختر الشعبة' : 'Select section'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sections.filter((section) => !formData.grade_id || section.grade_id === formData.grade_id).map((section) => (
+                        <SelectItem key={section.section_id} value={section.section_id}>
+                          {section.name_ar || section.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
