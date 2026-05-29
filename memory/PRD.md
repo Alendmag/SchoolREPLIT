@@ -61,55 +61,46 @@
 
 ### 2025-12 - إصلاحات Code Review منخفضة المخاطر
 - إزالة fallback الافتراضي لـ `JWT_SECRET` من backend، وأصبح الإعداد يفشل سريعًا إذا غاب المتغير.
-- نقل بيانات اختبار الدخول في `backend/tests/test_school_management.py` إلى environment variables:
-  - `SMS_TEST_SUPER_ADMIN_EMAIL`
-  - `SMS_TEST_SUPER_ADMIN_PASSWORD`
-  - `SMS_TEST_SCHOOL_ADMIN_EMAIL`
-  - `SMS_TEST_SCHOOL_ADMIN_PASSWORD`
+- نقل بيانات اختبار الدخول في `backend/tests/test_school_management.py` إلى environment variables.
 - التحقق من تحذيرات `LanguageContext.js`: النتائج false positives لأنها مفاتيح/نصوص ترجمة وليست أسرارًا أو API keys.
 - توثيق مخاطر `localStorage` ومسار الهجرة إلى httpOnly cookies في `/app/docs/SECURITY_REVIEW.md` دون إعادة تصميم Auth الآن.
-- إصلاح React hook dependency issues منخفضة المخاطر في:
-  - `AuthCallback.js`
-  - `StudentsPage.js`
-  - `TeachersPage.js`
-  - `SchedulePage.js`
-  - `MessagesPage.js`
+- إصلاح React hook dependency issues منخفضة المخاطر في AuthCallback/Students/Teachers/Schedule/Messages.
 - التحقق من مواضع Python `is`: المواضع الحالية كانت مقارنات صحيحة مع `None`، ولا توجد مقارنة literal خاطئة مؤكدة في النطاق المفحوص.
 - إزالة import غير مستخدم `status` من FastAPI في `server.py`.
+
+### 2025-12 - تدوير JWT_SECRET قبل الإنتاج
+- توليد JWT_SECRET قوي cryptographically secure بطول 86 حرفًا باستخدام `secrets.token_urlsafe(64)`.
+- تخزين السر في `/app/backend/.env` فقط ضمن متغير البيئة `JWT_SECRET`.
+- التحقق من عدم وجود hardcoded fallback secret في الكود.
+- إعادة تشغيل backend بعد التدوير.
+- تنفيذ smoke tests بعد التدوير:
+  - `/api/health`: 200.
+  - Login: ناجح.
+  - Token generation: يحتوي `sub`, `role`, `exp`.
+  - Protected endpoint `/api/auth/me`: 200.
+- Deployment health readiness: لا توجد blockers؛ توجد warnings تحسين DB/CORS مؤجلة.
 
 ## بيانات الاختبار
 - Super Admin: `admin@schoolsms.ly` / `Admin@123`
 - School Admin: `school_admin@test.ly` / `Admin@123`
 
-## API رئيسية
-- `POST /api/auth/login`
-- `GET /api/auth/me`
-- `GET /api/health`
-- `GET/POST /api/academic/subjects`
-- `GET/POST /api/sections/`
-- `GET/POST /api/rooms/`
-- `GET /api/schedule/section/{section_id}`
-- `POST /api/schedule/periods`
-- `PUT /api/schedule/periods/{period_id}`
-- `DELETE /api/schedule/periods/{period_id}`
-- `GET/PUT /api/schedule/period-times`
-
 ## نتائج الاختبار الأحدث
 - تقرير الاختبار: `/app/test_reports/iteration_4.json`.
 - Backend: 21/21 pytest passed.
 - Frontend: تسجيل الدخول وصفحات Schedule/Students/Teachers/Messages/Subjects تعمل بدون console errors.
-- Health check: `/api/health` يرجع 200.
-- Production readiness score الحالي: 8.5/10.
+- Health check بعد تدوير JWT_SECRET: 200.
+- Production readiness score الحالي: 8.7/10.
 
 ## Prioritized Backlog
 
 ### P0
-- تدوير `JWT_SECRET` إلى قيمة production قوية عبر secret manager قبل الإنتاج النهائي.
+- لا توجد عناصر P0 مفتوحة بعد تدوير JWT_SECRET، بشرط حفظ secret production خارج Git عند النشر.
 
 ### P1
 - الهجرة من تخزين JWT في `localStorage` إلى httpOnly secure cookies بالكامل.
 - تضييق CORS production origin بدل wildcard عند تنفيذ هجرة cookies.
 - مراجعة أذونات `school_id` على بعض endpoints.
+- تحسين projections لبعض dashboard/finance queries كما أشار deployment health check.
 - إضافة regression tests ثابتة لـ Subjects وSchedule Periods وPeriod Times.
 
 ### P2
@@ -119,5 +110,6 @@
 
 ## ملاحظات تشغيل
 - استخدم زر **Save to Github** في Emergent للمزامنة مع GitHub.
+- يجب عدم رفع `.env` إلى GitHub.
 - لا تغيّر المنافذ أو أسماء متغيرات البيئة المحمية.
 - يجب استبعاد `_id` من أي response قادم من MongoDB.
