@@ -11,6 +11,7 @@ import { Input } from '../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Calendar, Clock, Plus, Loader2, BookOpen, Trash2, GripVertical, Save } from 'lucide-react';
 import { toast } from 'sonner';
+import { getApiErrorMessage } from '../lib/form-utils';
 
 const DAYS = [
   { en: 'Sunday', ar: 'الأحد' },
@@ -107,7 +108,7 @@ export default function SchedulePage() {
       fetchSchedule();
       setFormData({ day: 0, period_number: 1, subject_id: '', teacher_id: '', room_id: '' });
     } catch (error) {
-      toast.error(language === 'ar' ? 'حدث خطأ' : 'Error');
+      toast.error(getApiErrorMessage(error, language === 'ar' ? 'حدث خطأ' : 'Error'));
     } finally {
       setSubmitting(false);
     }

@@ -43,6 +43,7 @@ import {
   Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getApiErrorMessage, cleanOptional } from '../lib/form-utils';
 
 export default function StudentsPage() {
   const { api, user } = useAuth();
@@ -98,11 +99,6 @@ export default function StudentsPage() {
     fetchGrades();
   }, [fetchStudents, fetchGrades]);
 
-  const cleanOptional = (value) => {
-    if (typeof value === 'string' && value.trim() === '') return null;
-    return value;
-  };
-
   const buildStudentPayload = () => ({
     ...formData,
     email: cleanOptional(formData.email),
@@ -138,7 +134,7 @@ export default function StudentsPage() {
       });
     } catch (error) {
       console.error('Add student error:', error);
-      toast.error(error.response?.data?.detail || t('error'));
+      toast.error(getApiErrorMessage(error, t('error')));
     } finally {
       setSubmitting(false);
     }

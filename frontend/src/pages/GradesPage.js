@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Layers, Plus, Edit, Trash2, Loader2, Search, Users, GraduationCap, BookOpen, Clock, MoreVertical, Building, DoorOpen } from 'lucide-react';
 import { toast } from 'sonner';
+import { getApiErrorMessage } from '../lib/form-utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 
 const SUBJECT_ICONS = ['📐', '📖', '🔬', '🧪', '🌍', '💻', '🎨', '⚽', '🎵', '📊'];
@@ -105,8 +106,7 @@ export default function GradesPage() {
       setFormData({});
       fetchAllData();
     } catch (error) {
-      const errMsg = error.response?.data?.detail;
-      toast.error(typeof errMsg === 'string' ? errMsg : (language === 'ar' ? 'حدث خطأ' : 'Error'));
+      toast.error(getApiErrorMessage(error, language === 'ar' ? 'حدث خطأ' : 'Error'));
     } finally {
       setSubmitting(false);
     }

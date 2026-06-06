@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { FileText, Plus, Edit, Trash2, Loader2, Search, Calendar, Clock, Users } from 'lucide-react';
 import { toast } from 'sonner';
+import { getApiErrorMessage } from '../lib/form-utils';
 
 export default function ExamsPage() {
   const { api, user } = useAuth();
@@ -25,36 +26,37 @@ export default function ExamsPage() {
     name: '', name_ar: '', exam_type: 'midterm', subject_id: '', grade_id: '', max_score: 100, date: '', duration_minutes: 60
   });
 
-  useEffect(() => { fetchData(); }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [examsRes, subjectsRes, gradesRes] = await Promise.all([
-        api.get('/academic/exams/'),
-        api.get('/academic/subjects/'),
-        api.get('/academic/grades/')
+        api.get('/academic/exams'),
+        api.get('/academic/subjects'),
+        api.get('/academic/grades')
       ]);
-      setExams(examsRes.data);
-      setSubjects(subjectsRes.data);
-      setGrades(gradesRes.data);
+      setExams(examsRes.data || []);
+      setSubjects(subjectsRes.data || []);
+      setGrades(gradesRes.data || []);
     } catch (error) {
-      toast.error(t('error'));
+      console.error('Fetch exams data error:', error);
+      toast.error(getApiErrorMessage(error, t('error')));
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, t]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await api.post('/academic/exams/', { ...formData, school_id: user.school_id });
+      await api.post('/academic/exams', { ...formData, school_id: user.school_id });
       toast.success(language === 'ar' ? 'تم إضافة الاختبار بنجاح' : 'Exam added successfully');
       setDialogOpen(false);
       fetchData();
       setFormData({ name: '', name_ar: '', exam_type: 'midterm', subject_id: '', grade_id: '', max_score: 100, date: '', duration_minutes: 60 });
     } catch (error) {
-      toast.error(error.response?.data?.detail || t('error'));
+      toast.error(getApiErrorMessage(error, t('error')));
     } finally {
       setSubmitting(false);
     }

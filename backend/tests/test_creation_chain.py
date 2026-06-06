@@ -175,6 +175,66 @@ def test_create_student_with_grade_section(session, created):
     created["student_id"] = data["student_id"]
 
 
+# ---------- EXAM (Iteration 6: depends on subject + grade) ----------
+def test_create_exam(session, created):
+    payload = {
+        "name": f"TEST_{UNIQUE}_Exam",
+        "name_ar": f"اختبار {UNIQUE} امتحان",
+        "exam_type": "monthly",
+        "subject_id": created["subject_id"],
+        "grade_id": created["grade_id"],
+        "max_score": 100,
+        "date": "2026-02-15",
+        "duration_minutes": 60,
+        "school_id": session.school_id,
+    }
+    r = session.post(f"{BASE_URL}/api/academic/exams", json=payload)
+    assert r.status_code in (200, 201), f"{r.status_code} {r.text}"
+    data = r.json()
+    assert "exam_id" in data
+    assert data["subject_id"] == created["subject_id"]
+    assert data["grade_id"] == created["grade_id"]
+    # ensure no leaked mongo _id
+    assert "_id" not in data
+    created["exam_id"] = data["exam_id"]
+
+    # GET verifies persistence
+    g = session.get(f"{BASE_URL}/api/academic/exams")
+    assert g.status_code == 200
+    assert any(e.get("exam_id") == data["exam_id"] for e in g.json())
+
+
+# ---------- SCHEDULE PERIOD (Iteration 6) ----------
+def test_create_schedule_period(session, created):
+    payload = {
+        "school_id": session.school_id,
+        "day": "sunday",
+        "period_number": 1,
+        "start_time": "08:00",
+        "end_time": "08:45",
+        "subject_id": created["subject_id"],
+        "teacher_id": created["teacher_id"],
+        "section_id": created["section_id"],
+    }
+    r = session.post(f"{BASE_URL}/api/schedule/periods", json=payload)
+    assert r.status_code in (200, 201), f"{r.status_code} {r.text}"
+    data = r.json()
+    assert "period_id" in data
+    assert data["subject_id"] == created["subject_id"]
+    assert data["teacher_id"] == created["teacher_id"]
+    assert data["section_id"] == created["section_id"]
+    assert "_id" not in data
+    created["period_id"] = data["period_id"]
+
+    # GET section schedule confirms persistence
+    g = session.get(f"{BASE_URL}/api/schedule/section/{created['section_id']}")
+    assert g.status_code == 200
+    body = g.json()
+    # Accept either a list of periods or wrapped dict
+    items = body if isinstance(body, list) else body.get("periods", []) or body.get("data", [])
+    assert any(p.get("period_id") == data["period_id"] for p in items), f"period not found in schedule response: {body}"
+
+
 # ---------- Verify lists include new records ----------
 def test_lists_contain_new_records(session, created):
     g = session.get(f"{BASE_URL}/api/teachers/")
@@ -188,6 +248,10 @@ def test_lists_contain_new_records(session, created):
 
 # ---------- Cleanup ----------
 def test_cleanup(session, created):
+    if "period_id" in created:
+        session.delete(f"{BASE_URL}/api/schedule/periods/{created['period_id']}")
+    if "exam_id" in created:
+        session.delete(f"{BASE_URL}/api/academic/exams/{created['exam_id']}")
     if "student_id" in created:
         session.delete(f"{BASE_URL}/api/students/{created['student_id']}")
     if "teacher_id" in created:

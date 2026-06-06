@@ -112,7 +112,7 @@ const ar = {
   hire_date: 'تاريخ التعيين',
   assigned_subjects: 'المواد المسندة',
   assigned_classes: 'الفصول المسندة',
-  add_teacher: 'إضافة معلم',
+  add_exam: 'إضافة اختبار',
   
   // Academic
   grade_name: 'اسم الصف',
@@ -310,6 +310,7 @@ const en = {
   add_student: 'Add Student',
   teacher_name: 'Teacher Name',
   add_teacher: 'Add Teacher',
+  add_exam: 'Add Exam',
   license_key: 'License Key',
   school_name: 'School Name',
   add_school: 'Add School',

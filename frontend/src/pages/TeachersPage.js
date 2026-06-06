@@ -8,11 +8,23 @@ import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-import { Checkbox } from '../components/ui/checkbox';
+import { MultiSelect } from '../components/ui/multi-select';
 import { GraduationCap, Plus, Search, Edit, Trash2, Loader2, BookOpen, Users, Phone, Mail, MoreVertical } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
+import { getApiErrorMessage, cleanOptional } from '../lib/form-utils';
 import { toast } from 'sonner';
+
+const SPECIALIZATIONS = [
+  { value: 'mathematics', ar: 'الرياضيات', en: 'Mathematics' },
+  { value: 'science', ar: 'العلوم', en: 'Science' },
+  { value: 'arabic', ar: 'اللغة العربية', en: 'Arabic' },
+  { value: 'english', ar: 'اللغة الإنجليزية', en: 'English' },
+  { value: 'islamic', ar: 'التربية الإسلامية', en: 'Islamic Studies' },
+  { value: 'social_studies', ar: 'الدراسات الاجتماعية', en: 'Social Studies' },
+  { value: 'computer', ar: 'الحاسوب', en: 'Computer' },
+  { value: 'physical_education', ar: 'التربية البدنية', en: 'Physical Education' },
+  { value: 'art', ar: 'الفنون', en: 'Art' },
+];
 
 export default function TeachersPage() {
   const { api, user } = useAuth();
@@ -61,8 +73,8 @@ export default function TeachersPage() {
       fetchData();
       resetForm();
     } catch (error) {
-      const errMsg = error.response?.data?.detail;
-      toast.error(typeof errMsg === 'string' ? errMsg : (language === 'ar' ? 'حدث خطأ' : 'Error'));
+      console.error('Create teacher error:', error);
+      toast.error(getApiErrorMessage(error, language === 'ar' ? 'حدث خطأ' : 'Error'));
     } finally {
       setSubmitting(false);
     }
@@ -83,11 +95,12 @@ export default function TeachersPage() {
     }
   };
 
-  const toggleArrayItem = (arr, item) => arr.includes(item) ? arr.filter(i => i !== item) : [...arr, item];
-
-  const cleanOptional = (value) => {
-    if (typeof value === 'string' && value.trim() === '') return null;
-    return value;
+  const subjectOptions = subjects.map((subject) => ({ value: subject.subject_id, label: subject.name_ar || subject.name }));
+  const gradeOptions = grades.map((grade) => ({ value: grade.grade_id, label: grade.name_ar || grade.name }));
+  const sectionOptions = sections.map((section) => ({ value: section.section_id, label: section.name_ar || section.name }));
+  const getSpecializationLabel = (value) => {
+    const item = SPECIALIZATIONS.find((specialization) => specialization.value === value);
+    return item ? (language === 'ar' ? item.ar : item.en) : value;
   };
 
   const buildTeacherPayload = () => ({
@@ -150,7 +163,18 @@ export default function TeachersPage() {
                     </div>
                     <div className="space-y-2">
                       <Label>{t('specialization')}</Label>
-                      <Input value={formData.specialization} onChange={(e) => setFormData({ ...formData, specialization: e.target.value })} placeholder={language === 'ar' ? 'الرياضيات' : 'Mathematics'} />
+                      <Select value={formData.specialization || ''} onValueChange={(value) => setFormData({ ...formData, specialization: value })}>
+                        <SelectTrigger data-testid="teacher-specialization-select">
+                          <SelectValue placeholder={language === 'ar' ? 'اختر التخصص' : 'Select specialization'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SPECIALIZATIONS.map((specialization) => (
+                            <SelectItem key={specialization.value} value={specialization.value}>
+                              {language === 'ar' ? specialization.ar : specialization.en}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-2">
                       <Label>{t('password')}</Label>
@@ -159,55 +183,40 @@ export default function TeachersPage() {
                   </div>
                 </div>
 
-                {/* Subjects Assignment */}
                 <div>
                   <h3 className="font-semibold mb-3 flex items-center gap-2"><BookOpen className="w-4 h-4" />{language === 'ar' ? 'المواد الدراسية' : 'Subjects'}</h3>
-                  <div className="grid grid-cols-3 gap-2 p-3 bg-muted/50 rounded-lg max-h-32 overflow-y-auto">
-                    {subjects.length > 0 ? subjects.map((subject) => (
-                      <div key={subject.subject_id} className="flex items-center space-x-2 rtl:space-x-reverse">
-                        <Checkbox 
-                          id={`subject-${subject.subject_id}`}
-                          checked={formData.subject_ids.includes(subject.subject_id)}
-                          onCheckedChange={() => setFormData({ ...formData, subject_ids: toggleArrayItem(formData.subject_ids, subject.subject_id) })}
-                        />
-                        <label htmlFor={`subject-${subject.subject_id}`} className="text-sm cursor-pointer">{subject.name_ar || subject.name}</label>
-                      </div>
-                    )) : <p className="text-muted-foreground text-sm col-span-3">{language === 'ar' ? 'لا توجد مواد' : 'No subjects'}</p>}
-                  </div>
+                  <MultiSelect
+                    options={subjectOptions}
+                    value={formData.subject_ids}
+                    onChange={(subject_ids) => setFormData({ ...formData, subject_ids })}
+                    placeholder={language === 'ar' ? 'اختر المواد' : 'Select subjects'}
+                    emptyText={language === 'ar' ? 'لا توجد مواد' : 'No subjects'}
+                    data-testid="teacher-subjects-multiselect"
+                  />
                 </div>
 
-                {/* Grades Assignment */}
                 <div>
                   <h3 className="font-semibold mb-3 flex items-center gap-2"><GraduationCap className="w-4 h-4" />{language === 'ar' ? 'الصفوف' : 'Grades'}</h3>
-                  <div className="grid grid-cols-3 gap-2 p-3 bg-muted/50 rounded-lg max-h-32 overflow-y-auto">
-                    {grades.length > 0 ? grades.map((grade) => (
-                      <div key={grade.grade_id} className="flex items-center space-x-2 rtl:space-x-reverse">
-                        <Checkbox 
-                          id={`grade-${grade.grade_id}`}
-                          checked={formData.grade_ids.includes(grade.grade_id)}
-                          onCheckedChange={() => setFormData({ ...formData, grade_ids: toggleArrayItem(formData.grade_ids, grade.grade_id) })}
-                        />
-                        <label htmlFor={`grade-${grade.grade_id}`} className="text-sm cursor-pointer">{grade.name_ar || grade.name}</label>
-                      </div>
-                    )) : <p className="text-muted-foreground text-sm col-span-3">{language === 'ar' ? 'لا توجد صفوف' : 'No grades'}</p>}
-                  </div>
+                  <MultiSelect
+                    options={gradeOptions}
+                    value={formData.grade_ids}
+                    onChange={(grade_ids) => setFormData({ ...formData, grade_ids })}
+                    placeholder={language === 'ar' ? 'اختر الصفوف' : 'Select grades'}
+                    emptyText={language === 'ar' ? 'لا توجد صفوف' : 'No grades'}
+                    data-testid="teacher-grades-multiselect"
+                  />
                 </div>
 
-                {/* Sections Assignment */}
                 <div>
                   <h3 className="font-semibold mb-3 flex items-center gap-2"><Users className="w-4 h-4" />{language === 'ar' ? 'الشُعب' : 'Sections'}</h3>
-                  <div className="grid grid-cols-3 gap-2 p-3 bg-muted/50 rounded-lg max-h-32 overflow-y-auto">
-                    {sections.length > 0 ? sections.map((section) => (
-                      <div key={section.section_id} className="flex items-center space-x-2 rtl:space-x-reverse">
-                        <Checkbox 
-                          id={`section-${section.section_id}`}
-                          checked={formData.section_ids.includes(section.section_id)}
-                          onCheckedChange={() => setFormData({ ...formData, section_ids: toggleArrayItem(formData.section_ids, section.section_id) })}
-                        />
-                        <label htmlFor={`section-${section.section_id}`} className="text-sm cursor-pointer">{section.name_ar || section.name}</label>
-                      </div>
-                    )) : <p className="text-muted-foreground text-sm col-span-3">{language === 'ar' ? 'لا توجد شعب' : 'No sections'}</p>}
-                  </div>
+                  <MultiSelect
+                    options={sectionOptions}
+                    value={formData.section_ids}
+                    onChange={(section_ids) => setFormData({ ...formData, section_ids })}
+                    placeholder={language === 'ar' ? 'اختر الشعب' : 'Select sections'}
+                    emptyText={language === 'ar' ? 'لا توجد شعب' : 'No sections'}
+                    data-testid="teacher-sections-multiselect"
+                  />
                 </div>
               </div>
               <DialogFooter>
@@ -249,7 +258,7 @@ export default function TeachersPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold">{teacher.name_ar || teacher.name}</h3>
-                    <p className="text-sm text-muted-foreground">{teacher.specialization || (language === 'ar' ? 'غير محدد' : 'Not specified')}</p>
+                    <p className="text-sm text-muted-foreground">{teacher.specialization ? getSpecializationLabel(teacher.specialization) : (language === 'ar' ? 'غير محدد' : 'Not specified')}</p>
                     <Badge variant={teacher.status === 'active' ? 'default' : 'secondary'} className="mt-1">
                       {teacher.status === 'active' ? (language === 'ar' ? 'نشط' : 'Active') : (language === 'ar' ? 'غير نشط' : 'Inactive')}
                     </Badge>

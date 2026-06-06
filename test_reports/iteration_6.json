@@ -1,0 +1,43 @@
+{
+  "summary": "Iteration 6 - Independently verified Phase A-D for all 6 workflows (Grade, Subject, Teacher, Student, Exam, Schedule) from real React UI + backend pytest. Extended /app/backend/tests/test_creation_chain.py with Exam and Schedule period tests (now 11/11 PASS). Real UI run from production URL: logged in as school_admin@test.ly, navigated to /grades, /subjects, /teachers, /students, /exams, /schedule - all pages rendered with content (no white screen, no runtime console errors, no failed network requests aside from allowed 307). Exam creation executed end-to-end through actual React UI: 'add_exam' button label correctly translated to 'إضافة اختبار', filled name_ar/name/subject Select/grade Select/date/max_score/duration, submit returned success toast 'تم إضافة الاختبار بنجاح', exam row appeared in table and persisted after page reload (verified in screenshot: row 'اختبار UI1780766423' with 2026-03-10/100/الرياضيات present after refresh). Teacher form confirmed to use real MultiSelect dropdowns and specialization Select (backend test_create_teacher_with_relations validates subject_ids/grade_ids/section_ids persistence). Schedule period creation verified at API level (subject_id, teacher_id, section_id persisted; GET /schedule/section/{id} returns the created period; no _id leakage).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/academic/grades/ and /api/academic/subjects/", "issue": "307 redirect on trailing slash before final 200 (cosmetic, non-blocking; carried over from iteration 5)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "ExamsPage and other dialogs", "issues": ["Radix Dialog warning: 'Missing Description or aria-describedby={undefined} for {DialogContent}' - a11y warning, non-blocking. Add DialogDescription or aria-describedby to DialogContent for every modal."]},
+      {"screen": "Dashboard charts", "issues": ["Recharts warning 'width(-1) and height(-1) of chart should be greater than 0' on initial render - cosmetic; add min-h/min-w to ResponsiveContainer parent."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_creation_chain.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(Optional) Add DialogDescription / aria-describedby to all DialogContent components to silence Radix a11y warning.",
+    "(Optional) Hit non-trailing-slash routes for /academic/grades and /academic/subjects from frontend to avoid 307 hop.",
+    "(Optional) Fix Recharts container width/height by adding min-h to ResponsiveContainer parent on dashboard."
+  ],
+  "critical_code_review_comments": [
+    "server.py is now ~1824 lines - still recommended to split into per-resource routers (already noted iteration 5).",
+    "TeacherResponse still carries both legacy `subjects`/`classes` strings AND new `subject_ids`/`grade_ids`/`section_ids` - mark legacy fields @deprecated and remove once consumers migrated to avoid drift.",
+    "GradeBase still exposes both `level` (int) and `level_id` (str) - duplication risk; derive `level` from level_id.order server-side and drop client-supplied `level`.",
+    "Frontend Arabic-first UI relies on name_ar for table rendering; any automated test searching for English `name` will get false-negative even when row is present - consider adding a hidden data-testid on each row (e.g. data-testid=`exam-row-${exam_id}`) which ExamsPage already does (line 191) - keep this pattern for all entity rows.",
+    "SchedulePage.js (369 lines) has very few data-testid attributes on form fields (day/period/subject/teacher/room selects) - add data-testids to make schedule UI E2E-testable in future iterations."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_creation_chain.py (extended: test_create_exam, test_create_schedule_period, cleanup for both)"
+  ],
+  "success_rate": {"backend": "100% (11/11 pytest including new Exam + Schedule)", "frontend": "100% (6/6 pages render, exam UI flow 100%, 0 console errors, 0 failed network)"},
+  "test_credentials": "school_admin@test.ly / Admin@123 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "test_creation_chain.py creates and cleans up TEST_UI<ts> prefixed Level/Grade/Section/Subject/Room/Teacher/Student/Exam/SchedulePeriod each run. UI run left one TEST_UI_Exam_* exam row visible (safe to ignore).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 6 workflows green from real UI + backend. To re-run: SMS_TEST_SCHOOL_ADMIN_EMAIL=school_admin@test.ly SMS_TEST_SCHOOL_ADMIN_PASSWORD=Admin@123 pytest /app/backend/tests/test_creation_chain.py -v. POST endpoints actually used by UI: /api/levels/, /api/academic/grades(/), /api/sections/, /api/academic/subjects(/), /api/rooms/, /api/teachers/, /api/students/, /api/academic/exams, /api/schedule/periods. Exam POST hits /api/academic/exams (no trailing slash) and returns no _id. Schedule periods are read back via /api/schedule/section/{section_id}.",
+  "rca of the issue": "No new bugs found in iteration 6. Verified iteration 5 fixes hold: (1) GradesPage sends level_id + numeric level; (2) StudentsPage cleanOptional converts blanks to null; (3) TeacherBase persists subject_ids/grade_ids/section_ids; (4) ExamCreate pops _id before response (verified - `_id` not in POST /api/academic/exams JSON); (5) getApiErrorMessage prevents rendering arrays/objects in toast (no toast crash observed). Apparent EXAM_ROW_APPEARED=False in playwright log was a test-script false-negative because Arabic UI renders name_ar not name; visual screenshot confirms the exam row is present and survives reload."
+}
