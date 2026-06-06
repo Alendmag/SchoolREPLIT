@@ -65,42 +65,51 @@
 - smoke tests بعد التدوير: health/login/token/auth-me كلها ناجحة.
 
 ### 2025-12 - Phase 1 + Phase 2: إصلاح إنشاء الكيانات من UI
-- إصلاح سلسلة الإنشاء من الواجهة الفعلية:
-  - Level
-  - Grade
-  - Section
-  - Subject
-  - Room
-  - Teacher
-  - Student
+- إصلاح سلسلة الإنشاء من الواجهة الفعلية: Level, Grade, Section, Subject, Room, Teacher, Student.
 - `GradeBase` أصبح يدعم `level_id` مع `level` افتراضي لتطابق payload الواجهة.
 - `GradesPage.js` أصبح يضيف `level` المشتق من المرحلة المختارة ويطبع numeric fields قبل الإرسال.
 - `StudentsPage.js` أصبح يحول الحقول الاختيارية الفارغة إلى `null` بدل `""`، ويضيف dropdown للشعبة مرتبطًا بالصف.
 - `TeachersPage.js` أصبح يرسل `subject_ids`, `grade_ids`, `section_ids` من checkboxes محملة من APIs.
 - `TeacherBase` و`TeacherResponse` و`create_teacher` أصبحت تحفظ وتعيد علاقات المعلم.
-- تم التحقق من الواجهة الفعلية عبر Playwright: كل POSTs رجعت 200 بدون 422/500.
 - Testing Agent iteration 5 أكد: UI create 7/7 ناجح، backend tests 30/30 ناجحة، ولا توجد console errors.
+
+### 2025-12 - Final focused real UI verification قبل النشر
+- تم تنفيذ فحص UI فعلي إضافي ومحدد للـ workflows الأربعة المطلوبة فقط:
+  - Create Grade: نجح من UI، ظهر في تبويب الصفوف، وتم حفظ `level_id`.
+  - Create Subject: نجح من UI، وظهر في تبويب المواد.
+  - Create Teacher: نجح من UI، ظهر في صفحة المعلمين، وظهرت مادة المعلم كـ badge، وتم حفظ `subject_ids`, `grade_ids`, `section_ids`.
+  - Create Student: نجح من UI، ظهر في جدول الطلاب، وظهر الصف، وتم حفظ `grade_id`, `section_id`.
+- HTTP statuses من الفحص:
+  - Login: 200
+  - Level prerequisite: 200
+  - Grade: 307 ثم 200
+  - Section prerequisite: 200
+  - Subject: 307 ثم 200
+  - Teacher: 200
+  - Student: 200
+- لا توجد POST failures غير redirect؛ لا توجد 422/500.
+- النشر لا يزال متوقفًا حتى موافقة المستخدم الصريحة.
 
 ## بيانات الاختبار
 - Super Admin: `admin@schoolsms.ly` / `Admin@123`
 - School Admin: `school_admin@test.ly` / `Admin@123`
 
 ## نتائج الاختبار الأحدث
-- تقرير الاختبار: `/app/test_reports/iteration_5.json`.
-- Backend: 30/30 pytest passed.
-- Frontend UI: Level → Grade → Section → Subject → Room → Teacher → Student كلها تنشأ بنجاح من React UI.
+- تقرير الاختبار الكامل السابق: `/app/test_reports/iteration_5.json`.
+- فحص UI النهائي المركز: Grade/Subject/Teacher/Student كلها نجحت من React UI الحقيقي.
+- Backend: 30/30 pytest passed في iteration 5.
 - لا توجد 422/500 في مسارات الإنشاء بعد الإصلاح.
 
 ## Root Causes المغلقة
 - Grades: الواجهة كانت ترسل `level_id` بينما backend كان يتطلب `level` رقميًا؛ أدى إلى 422، ثم تم دعم الحقلين.
 - Students: الواجهة كانت ترسل email اختياريًا كـ empty string، و`Optional[EmailStr]` يرفضه؛ تم تحويل الفراغ إلى `null`.
 - Teachers: علاقات المواد/الصفوف/الشعب لم تكن محفوظة في backend؛ تم دعمها في schema والـ response والتخزين.
-- Levels/Sections/Subjects/Rooms: تم التحقق من `school_id` وMongo serialization والـ response، وتعمل ضمن السلسلة من UI؛ أي فشل سابق كان مرتبطًا بمسار الصفحة المشترك واعتماد الكيانات على نجاح Grade/Subject.
+- Levels/Sections/Subjects/Rooms: تم التحقق من `school_id` وMongo serialization والـ response، وتعمل ضمن السلسلة من UI.
 
 ## Prioritized Backlog
 
 ### P0
-- لا يوجد P0 مفتوح لإنشاء الكيانات بعد iteration 5.
+- لا يوجد P0 مفتوح لإنشاء الكيانات بعد الفحص النهائي المركز.
 
 ### P1
 - الهجرة من تخزين JWT في `localStorage` إلى httpOnly secure cookies بالكامل.
