@@ -29,7 +29,7 @@
 ### الصفحات الرئيسية
 - [x] لوحة التحكم.
 - [x] الطلاب CRUD + بحث + اختيار الصف والشعبة.
-- [x] المعلمون CRUD + تعيين المواد/الصفوف/الشعب من بيانات APIs.
+- [x] المعلمون CRUD + تعيين المواد/الصفوف/الشعب من بيانات APIs عبر dropdown multi-select.
 - [x] الفصول والمواد: المراحل، الصفوف، الشعب، المواد، القاعات.
 - [x] الاختبارات.
 - [x] الحضور.
@@ -69,26 +69,29 @@
 - `GradeBase` أصبح يدعم `level_id` مع `level` افتراضي لتطابق payload الواجهة.
 - `GradesPage.js` أصبح يضيف `level` المشتق من المرحلة المختارة ويطبع numeric fields قبل الإرسال.
 - `StudentsPage.js` أصبح يحول الحقول الاختيارية الفارغة إلى `null` بدل `""`، ويضيف dropdown للشعبة مرتبطًا بالصف.
-- `TeachersPage.js` أصبح يرسل `subject_ids`, `grade_ids`, `section_ids` من checkboxes محملة من APIs.
+- `TeachersPage.js` أصبح يرسل `subject_ids`, `grade_ids`, `section_ids` من بيانات APIs.
 - `TeacherBase` و`TeacherResponse` و`create_teacher` أصبحت تحفظ وتعيد علاقات المعلم.
 - Testing Agent iteration 5 أكد: UI create 7/7 ناجح، backend tests 30/30 ناجحة، ولا توجد console errors.
 
-### 2025-12 - Final focused real UI verification قبل النشر
-- تم تنفيذ فحص UI فعلي إضافي ومحدد للـ workflows الأربعة المطلوبة فقط:
-  - Create Grade: نجح من UI، ظهر في تبويب الصفوف، وتم حفظ `level_id`.
-  - Create Subject: نجح من UI، وظهر في تبويب المواد.
-  - Create Teacher: نجح من UI، ظهر في صفحة المعلمين، وظهرت مادة المعلم كـ badge، وتم حفظ `subject_ids`, `grade_ids`, `section_ids`.
-  - Create Student: نجح من UI، ظهر في جدول الطلاب، وظهر الصف، وتم حفظ `grade_id`, `section_id`.
-- HTTP statuses من الفحص:
-  - Login: 200
-  - Level prerequisite: 200
-  - Grade: 307 ثم 200
-  - Section prerequisite: 200
-  - Subject: 307 ثم 200
-  - Teacher: 200
-  - Student: 200
-- لا توجد POST failures غير redirect؛ لا توجد 422/500.
-- النشر لا يزال متوقفًا حتى موافقة المستخدم الصريحة.
+### 2025-12 - Phase A-D stability pass للـ workflows الحرجة
+- أُضيف `MultiSelect` dropdown component في `/app/frontend/src/components/ui/multi-select.jsx`.
+- أُضيفت أدوات آمنة لمعالجة أخطاء API في `/app/frontend/src/lib/form-utils.js` لمنع white screen عند تمرير array/object إلى toast.
+- تم تحديث Teacher form:
+  - Specialization أصبح Select dropdown.
+  - Subjects من Subjects API عبر MultiSelect.
+  - Grades من Grades API عبر MultiSelect.
+  - Sections من Sections API عبر MultiSelect.
+- تم تحديث Student/Exam/Grade/Schedule error handling ليعرض رسالة نصية آمنة بدل كائنات Pydantic الخام.
+- تم إصلاح ترجمة زر `add_exam` حتى يظهر **إضافة اختبار** بدل key خام.
+- تم فحص UI فعلي كامل بعد الإصلاحات لكل workflows المطلوبة:
+  - Grade: create → success notification → يظهر في UI → refresh/reload ناجح → `level_id` محفوظ.
+  - Subject: create → success notification → يظهر في UI → refresh/reload ناجح.
+  - Teacher: create من dropdown/multiselect → success notification → يظهر في UI → subject badge يظهر → refresh/reload ناجح → `subject_ids/grade_ids/section_ids` محفوظة.
+  - Student: create → success notification → يظهر في جدول الطلاب → refresh/reload ناجح → `grade_id/section_id` محفوظة.
+  - Exam: create → success notification → يظهر في جدول الاختبارات → refresh/reload ناجح → `subject_id/grade_id` محفوظة.
+  - Schedule: create period → success notification → تظهر الحصة في الجدول → refresh/reload ناجح → الفترة محفوظة في backend.
+- نتائج الفحص اليدوي Playwright: لا white screen، لا console runtime errors، لا failed network requests؛ POSTs كلها 200 باستثناء 307 redirects غير كاسرة للـ grade/subject قبل 200.
+- Testing Agent iteration 6: backend creation chain 11/11 passed، ولا critical issues.
 
 ## بيانات الاختبار
 - Super Admin: `admin@schoolsms.ly` / `Admin@123`
@@ -96,22 +99,26 @@
 
 ## نتائج الاختبار الأحدث
 - تقرير الاختبار الكامل السابق: `/app/test_reports/iteration_5.json`.
-- فحص UI النهائي المركز: Grade/Subject/Teacher/Student كلها نجحت من React UI الحقيقي.
-- Backend: 30/30 pytest passed في iteration 5.
-- لا توجد 422/500 في مسارات الإنشاء بعد الإصلاح.
+- تقرير الاختبار الأحدث: `/app/test_reports/iteration_6.json`.
+- فحص UI الحقيقي الأحدث: Grade/Subject/Teacher/Student/Exam/Schedule كلها نجحت create → refresh → reload.
+- Frontend build: نجح مع warnings قديمة غير كاسرة.
+- لا توجد 422/500 أو React white screen في workflows المطلوبة بعد الإصلاح.
 
 ## Root Causes المغلقة
-- Grades: الواجهة كانت ترسل `level_id` بينما backend كان يتطلب `level` رقميًا؛ أدى إلى 422، ثم تم دعم الحقلين.
-- Students: الواجهة كانت ترسل email اختياريًا كـ empty string، و`Optional[EmailStr]` يرفضه؛ تم تحويل الفراغ إلى `null`.
-- Teachers: علاقات المواد/الصفوف/الشعب لم تكن محفوظة في backend؛ تم دعمها في schema والـ response والتخزين.
-- Levels/Sections/Subjects/Rooms: تم التحقق من `school_id` وMongo serialization والـ response، وتعمل ضمن السلسلة من UI.
+- Grades: الواجهة كانت ترسل `level_id` بينما backend كان يتطلب `level` رقميًا؛ تم دعم الحقلين.
+- Students/Exams white screen risk: بعض catch blocks كانت تمرر `error.response.data.detail` مباشرة إلى toast، وقد يكون array/object؛ تم تحويله لنص آمن عبر `getApiErrorMessage`.
+- Teachers: علاقات المواد/الصفوف/الشعب لم تكن تجربة dropdown/multiselect مناسبة ولم تكن محفوظة سابقًا بشكل موثوق؛ تم استبدالها بمكوّن MultiSelect وربطها بالـ backend.
+- Exam UI: مفتاح `add_exam` كان غير مترجم؛ تم إضافة الترجمة.
+- Schedule: تمت إعادة التحقق من حفظ الفترة وعرضها بعد reload؛ لا يوجد فشل حالي.
 
 ## Prioritized Backlog
 
 ### P0
-- لا يوجد P0 مفتوح لإنشاء الكيانات بعد الفحص النهائي المركز.
+- لا يوجد P0 مفتوح لهذه workflows بعد iteration 6، لكن النشر يبقى محظورًا حتى موافقة المستخدم الصريحة.
 
 ### P1
+- إضافة DialogDescription لكل DialogContent لإزالة تحذيرات Radix a11y.
+- إضافة data-testid أكثر دقة لحقول SchedulePage.
 - الهجرة من تخزين JWT في `localStorage` إلى httpOnly secure cookies بالكامل.
 - تضييق CORS production origin بدل wildcard عند تنفيذ هجرة cookies.
 - مراجعة أذونات `school_id` على بعض endpoints.
