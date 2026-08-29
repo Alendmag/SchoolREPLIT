@@ -71,6 +71,19 @@ def merge_period_times(school_id: str, saved_times: list):
 
 def setup_extended_routes(db, get_current_user, require_roles, UserRole):
     """Setup all extended routes with database and auth dependencies"""
+
+    def _resolve_school_id(user: dict, provided: Optional[str] = None) -> str:
+        """Force tenancy from JWT; ignore client-supplied school_id for non-privileged users."""
+        role = user.get("role")
+        if role in (UserRole.SUPER_ADMIN, UserRole.SUPPORT_AGENT):
+            chosen = provided or user.get("school_id")
+            if not chosen:
+                raise HTTPException(status_code=400, detail="school_id مطلوب")
+            return chosen
+        user_school_id = user.get("school_id")
+        if not user_school_id:
+            raise HTTPException(status_code=403, detail="المستخدم غير مرتبط بمدرسة")
+        return user_school_id
     
     # ==================== SECTIONS ROUTES ====================
     
@@ -85,7 +98,7 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         section_id = generate_id("sec")
         now = datetime.now(timezone.utc)
         
-        school_id = section_data.get("school_id") or user.get("school_id")
+        school_id = _resolve_school_id(user, section_data.get("school_id"))
         
         section_doc = {
             "section_id": section_id,
@@ -141,11 +154,16 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         if user["role"] not in [UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN]:
             raise HTTPException(status_code=403, detail="غير مصرح")
         
-        update_data = {k: v for k, v in section_data.items() if v is not None}
+        update_data = {k: v for k, v in section_data.items() if v is not None and k != "school_id"}
         update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
         
+        # Tenant guard on the existing record
+        section_filter = {"section_id": section_id}
+        if user["role"] not in [UserRole.SUPER_ADMIN, UserRole.SUPPORT_AGENT]:
+            section_filter["school_id"] = user.get("school_id")
+
         result = await db.sections.update_one(
-            {"section_id": section_id},
+            section_filter,
             {"$set": update_data}
         )
         
@@ -177,7 +195,7 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         level_id = generate_id("lvl")
         now = datetime.now(timezone.utc)
         
-        school_id = level_data.get("school_id") or user.get("school_id")
+        school_id = _resolve_school_id(user, level_data.get("school_id"))
         
         level_doc = {
             "level_id": level_id,
@@ -249,7 +267,7 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         period_id = generate_id("prd")
         now = datetime.now(timezone.utc)
         
-        school_id = period_data.get("school_id") or user.get("school_id")
+        school_id = _resolve_school_id(user, period_data.get("school_id"))
         room_id = period_data.get("room_id")
         room_name = period_data.get("room")
         if room_id:
@@ -287,7 +305,7 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         if user["role"] not in [UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SCHOOL_MANAGER]:
             raise HTTPException(status_code=403, detail="غير مصرح")
 
-        school_id = user.get("school_id") or times_data.get("school_id")
+        school_id = _resolve_school_id(user, times_data.get("school_id"))
         times = times_data.get("periods", [])
         if len(times) != 9:
             raise HTTPException(status_code=400, detail="يجب تحديد أوقات 9 حصص")
@@ -438,7 +456,7 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         assignment_id = generate_id("asgn")
         now = datetime.now(timezone.utc)
         
-        school_id = assignment_data.get("school_id") or user.get("school_id")
+        school_id = _resolve_school_id(user, assignment_data.get("school_id"))
         
         assignment_doc = {
             "assignment_id": assignment_id,
@@ -548,6 +566,7 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         }
         
         await db.assignment_submissions.insert_one(submission_doc)
+        submission_doc.pop("_id", None)
         submission_doc["submitted_at"] = now
         return submission_doc
     
@@ -615,7 +634,7 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         message_id = generate_id("msg")
         now = datetime.now(timezone.utc)
         
-        school_id = message_data.get("school_id") or user.get("school_id")
+        school_id = _resolve_school_id(user, message_data.get("school_id"))
         
         message_doc = {
             "message_id": message_id,
@@ -714,7 +733,7 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         report_data: dict,
         user: dict = Depends(get_current_user)
     ):
-        school_id = report_data.get("school_id") or user.get("school_id")
+        school_id = _resolve_school_id(user, report_data.get("school_id"))
         start_date = report_data.get("start_date")
         end_date = report_data.get("end_date")
         grade_id = report_data.get("grade_id")
@@ -762,7 +781,7 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         report_data: dict,
         user: dict = Depends(get_current_user)
     ):
-        school_id = report_data.get("school_id") or user.get("school_id")
+        school_id = _resolve_school_id(user, report_data.get("school_id"))
         grade_id = report_data.get("grade_id")
         subject_id = report_data.get("subject_id")
         student_id = report_data.get("student_id")
@@ -815,7 +834,7 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         report_data: dict,
         user: dict = Depends(get_current_user)
     ):
-        school_id = report_data.get("school_id") or user.get("school_id")
+        school_id = _resolve_school_id(user, report_data.get("school_id"))
         start_date = report_data.get("start_date")
         end_date = report_data.get("end_date")
         
@@ -869,7 +888,7 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         report_data: dict,
         user: dict = Depends(get_current_user)
     ):
-        school_id = report_data.get("school_id") or user.get("school_id")
+        school_id = _resolve_school_id(user, report_data.get("school_id"))
         grade_id = report_data.get("grade_id")
         section_id = report_data.get("section_id")
         
@@ -1035,7 +1054,7 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         if user["role"] not in [UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN]:
             raise HTTPException(status_code=403, detail="غير مصرح")
         
-        school_id = settings_data.get("school_id") or user.get("school_id")
+        school_id = _resolve_school_id(user, settings_data.get("school_id"))
         
         update_data = {k: v for k, v in settings_data.items() if v is not None and k != "school_id"}
         update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
@@ -1172,7 +1191,7 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         
         link_doc = {
             "link_id": link_id,
-            "school_id": link_data.get("school_id") or user.get("school_id"),
+            "school_id": _resolve_school_id(user, link_data.get("school_id")),
             "parent_id": link_data.get("parent_id"),
             "student_id": link_data.get("student_id"),
             "relationship": link_data.get("relationship", "parent"),
@@ -1231,7 +1250,7 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         room_id = generate_id("room")
         room_doc = {
             "room_id": room_id,
-            "school_id": user.get("school_id") or data.get("school_id"),
+            "school_id": _resolve_school_id(user, data.get("school_id")),
             "name": data.get("name"),
             "name_ar": data.get("name_ar"),
             "type": data.get("type", "classroom"),
@@ -1285,14 +1304,14 @@ def setup_extended_routes(db, get_current_user, require_roles, UserRole):
         return {"success": True}
 
     @notifications_router.get("/unread-count")
-    async def get_unread_count(user: dict = Depends(get_current_user)):
+    async def get_notifications_unread_count(user: dict = Depends(get_current_user)):
         count = await db.notifications.count_documents({"user_id": user["user_id"], "is_read": False})
         return {"count": count}
 
     # ==================== EXPORT REPORTS ====================
     @export_router.post("/{report_type}/preview")
     async def preview_report(report_type: str, data: dict, user: dict = Depends(get_current_user)):
-        school_id = user.get("school_id") or data.get("school_id")
+        school_id = _resolve_school_id(user, data.get("school_id"))
         
         if report_type == "students":
             students = await db.students.find({"school_id": school_id}, {"_id": 0}).to_list(1000)

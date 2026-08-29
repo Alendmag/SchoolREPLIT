@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getApiErrorMessage, cleanOptional } from '../lib/form-utils';
+import StudentProfileDialog from '../components/StudentProfileDialog';
 
 export default function StudentsPage() {
   const { api, user } = useAuth();
@@ -53,6 +54,9 @@ export default function StudentsPage() {
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [editingStudentId, setEditingStudentId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterGrade, setFilterGrade] = useState('all');
   const [formData, setFormData] = useState({
@@ -111,29 +115,64 @@ export default function StudentsPage() {
     school_id: user.school_id,
   });
 
+  const resetForm = () => {
+    setEditingStudentId(null);
+    setFormData({
+      name: '',
+      name_ar: '',
+      email: '',
+      phone: '',
+      date_of_birth: '',
+      gender: 'male',
+      national_id: '',
+      grade_id: '',
+      section_id: '',
+      password: '',
+    });
+  };
+
+  const openViewProfile = (student) => {
+    setSelectedStudent(student);
+    setProfileOpen(true);
+  };
+
+  const openEditStudent = (student) => {
+    setEditingStudentId(student.student_id);
+    setFormData({
+      name: student.name || '',
+      name_ar: student.name_ar || '',
+      email: student.email || '',
+      phone: student.phone || '',
+      date_of_birth: student.date_of_birth || '',
+      gender: student.gender || 'male',
+      national_id: student.national_id || '',
+      grade_id: student.grade_id || '',
+      section_id: student.section_id || '',
+      password: '',
+    });
+    setDialogOpen(true);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
 
     try {
-      await api.post('/students/', buildStudentPayload());
-      toast.success(language === 'ar' ? 'تم إضافة الطالب بنجاح' : 'Student added successfully');
+      if (editingStudentId) {
+        // Update path — send only allowed base fields, never school_id
+        const { password, ...basePayload } = buildStudentPayload();
+        delete basePayload.school_id;
+        await api.put(`/students/${editingStudentId}`, basePayload);
+        toast.success(language === 'ar' ? 'تم تحديث الطالب بنجاح' : 'Student updated successfully');
+      } else {
+        await api.post('/students/', buildStudentPayload());
+        toast.success(language === 'ar' ? 'تم إضافة الطالب بنجاح' : 'Student added successfully');
+      }
       setDialogOpen(false);
       fetchStudents();
-      setFormData({
-        name: '',
-        name_ar: '',
-        email: '',
-        phone: '',
-        date_of_birth: '',
-        gender: 'male',
-        national_id: '',
-        grade_id: '',
-        section_id: '',
-        password: '',
-      });
+      resetForm();
     } catch (error) {
-      console.error('Add student error:', error);
+      console.error('Save student error:', error);
       toast.error(getApiErrorMessage(error, t('error')));
     } finally {
       setSubmitting(false);
@@ -196,18 +235,22 @@ export default function StudentsPage() {
           </p>
         </div>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
-            <Button data-testid="add-student-btn">
+            <Button data-testid="add-student-btn" onClick={() => resetForm()}>
               <Plus className="w-4 h-4 me-2" />
               {t('add_student')}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>{t('add_student')}</DialogTitle>
+              <DialogTitle data-testid="student-form-title">
+                {editingStudentId ? (language === 'ar' ? 'تعديل بيانات الطالب' : 'Edit Student') : t('add_student')}
+              </DialogTitle>
               <DialogDescription>
-                {language === 'ar' ? 'أدخل بيانات الطالب الجديد' : 'Enter new student information'}
+                {editingStudentId
+                  ? (language === 'ar' ? 'تحديث بيانات الطالب المحدد' : 'Update the selected student data')
+                  : (language === 'ar' ? 'أدخل بيانات الطالب الجديد' : 'Enter new student information')}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit}>
@@ -432,10 +475,22 @@ export default function StudentsPage() {
                       </TableCell>
                       <TableCell className="text-end">
                         <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="icon" data-testid={`view-student-${student.student_id}`}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            data-testid={`view-student-${student.student_id}`}
+                            onClick={() => openViewProfile(student)}
+                            aria-label={language === 'ar' ? 'عرض ملف الطالب' : 'View student profile'}
+                          >
                             <Eye className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" data-testid={`edit-student-${student.student_id}`}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            data-testid={`edit-student-${student.student_id}`}
+                            onClick={() => openEditStudent(student)}
+                            aria-label={language === 'ar' ? 'تعديل الطالب' : 'Edit student'}
+                          >
                             <Edit className="w-4 h-4" />
                           </Button>
                           <Button 
@@ -444,6 +499,7 @@ export default function StudentsPage() {
                             className="text-destructive"
                             onClick={() => handleDelete(student.student_id)}
                             data-testid={`delete-student-${student.student_id}`}
+                            aria-label={language === 'ar' ? 'حذف الطالب' : 'Delete student'}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -463,6 +519,12 @@ export default function StudentsPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <StudentProfileDialog
+        open={profileOpen}
+        onOpenChange={setProfileOpen}
+        student={selectedStudent}
+      />
     </div>
   );
 }

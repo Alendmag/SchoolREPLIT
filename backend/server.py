@@ -163,7 +163,7 @@ class StudentBase(BaseModel):
     avatar: Optional[str] = None
 
 class StudentCreate(StudentBase):
-    school_id: str
+    school_id: Optional[str] = None
     password: Optional[str] = None
 
 class StudentResponse(StudentBase):
@@ -187,7 +187,7 @@ class TeacherBase(BaseModel):
     section_ids: List[str] = []
 
 class TeacherCreate(TeacherBase):
-    school_id: str
+    school_id: Optional[str] = None
     password: str
 
 class TeacherResponse(TeacherBase):
@@ -210,7 +210,7 @@ class InvoiceBase(BaseModel):
     status: str = "pending"  # pending, paid, overdue, cancelled
 
 class InvoiceCreate(InvoiceBase):
-    school_id: str
+    school_id: Optional[str] = None
 
 class InvoiceResponse(InvoiceBase):
     invoice_id: str
@@ -226,7 +226,7 @@ class PaymentBase(BaseModel):
     notes: Optional[str] = None
 
 class PaymentCreate(PaymentBase):
-    school_id: str
+    school_id: Optional[str] = None
 
 class PaymentResponse(PaymentBase):
     payment_id: str
@@ -245,7 +245,7 @@ class NotificationBase(BaseModel):
     target_users: List[str] = []
 
 class NotificationCreate(NotificationBase):
-    school_id: str
+    school_id: Optional[str] = None
     send_sms: bool = False
     send_push: bool = True
 
@@ -264,7 +264,7 @@ class GradeBase(BaseModel):
     description: Optional[str] = None
 
 class GradeCreate(GradeBase):
-    school_id: str
+    school_id: Optional[str] = None
 
 class GradeResponse(GradeBase):
     grade_id: str
@@ -281,7 +281,7 @@ class SubjectBase(BaseModel):
     description: Optional[str] = None
 
 class SubjectCreate(SubjectBase):
-    school_id: str
+    school_id: Optional[str] = None
     grade_ids: List[str] = []
 
 class SubjectResponse(SubjectBase):
@@ -301,7 +301,7 @@ class ExamBase(BaseModel):
     duration_minutes: int = 60
 
 class ExamCreate(ExamBase):
-    school_id: str
+    school_id: Optional[str] = None
 
 class ExamResponse(ExamBase):
     exam_id: str
@@ -315,9 +315,9 @@ class AttendanceBase(BaseModel):
     notes: Optional[str] = None
 
 class AttendanceCreate(AttendanceBase):
-    school_id: str
+    school_id: Optional[str] = None
     subject_id: Optional[str] = None
-    recorded_by: str
+    recorded_by: Optional[str] = None
 
 class AttendanceResponse(AttendanceBase):
     attendance_id: str
@@ -429,6 +429,25 @@ def require_roles(*allowed_roles):
             raise HTTPException(status_code=403, detail="Insufficient permissions")
         return user
     return role_checker
+
+def resolve_school_id(user: dict, provided: Optional[str] = None) -> str:
+    """
+    Return the school_id that a mutation MUST be scoped to.
+    - SUPER_ADMIN / SUPPORT_AGENT may act on any tenant (they can pass `provided`).
+    - Any other role is FORCED to their JWT-bound school_id; body/query values are ignored.
+    Raises 400 if a non-privileged user has no school_id, or if privileged user gave nothing.
+    """
+    role = user.get("role")
+    if role in (UserRole.SUPER_ADMIN, UserRole.SUPPORT_AGENT):
+        chosen = provided or user.get("school_id")
+        if not chosen:
+            raise HTTPException(status_code=400, detail="school_id مطلوب")
+        return chosen
+    user_school_id = user.get("school_id")
+    if not user_school_id:
+        raise HTTPException(status_code=403, detail="المستخدم غير مرتبط بمدرسة")
+    return user_school_id
+
 
 async def check_school_license(school_id: str) -> bool:
     """Check if school has valid license"""
@@ -952,8 +971,10 @@ async def create_student(
     student_data: StudentCreate,
     user: dict = Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SCHOOL_MANAGER))
 ):
+    # Enforce tenancy from JWT; ignore any client-supplied school_id
+    school_id = resolve_school_id(user, student_data.school_id)
     # Check school license
-    if not await check_school_license(student_data.school_id):
+    if not await check_school_license(school_id):
         raise HTTPException(status_code=403, detail="ترخيص المدرسة غير فعال")
     
     student_id = generate_id("stu")
@@ -961,7 +982,7 @@ async def create_student(
     
     student_doc = {
         "student_id": student_id,
-        "school_id": student_data.school_id,
+        "school_id": school_id,
         "name": student_data.name,
         "name_ar": student_data.name_ar,
         "email": student_data.email,
@@ -988,7 +1009,7 @@ async def create_student(
             "name": student_data.name,
             "name_ar": student_data.name_ar,
             "role": UserRole.STUDENT,
-            "school_id": student_data.school_id,
+            "school_id": school_id,
             "is_active": True,
             "password": hash_password(student_data.password),
             "created_at": now.isoformat()
@@ -1055,17 +1076,27 @@ async def update_student(
     student_data: StudentBase,
     user: dict = Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SCHOOL_MANAGER))
 ):
+    existing = await db.students.find_one({"student_id": student_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="الطالب غير موجود")
+    # Tenant guard: non-super-admin can only edit their tenant's records
+    if user["role"] not in (UserRole.SUPER_ADMIN, UserRole.SUPPORT_AGENT):
+        if existing.get("school_id") != user.get("school_id"):
+            raise HTTPException(status_code=403, detail="غير مصرح")
+
     update_data = student_data.model_dump(exclude_unset=True)
+    # Never let client rebind a record to another tenant
+    update_data.pop("school_id", None)
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
-    
+
     result = await db.students.update_one(
         {"student_id": student_id},
         {"$set": update_data}
     )
-    
+
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="الطالب غير موجود")
-    
+
     return await get_student(student_id, user)
 
 @students_router.delete("/{student_id}")
@@ -1085,8 +1116,10 @@ async def create_teacher(
     teacher_data: TeacherCreate,
     user: dict = Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SCHOOL_MANAGER))
 ):
+    # Enforce tenancy from JWT; ignore any client-supplied school_id
+    school_id = resolve_school_id(user, teacher_data.school_id)
     # Check school license
-    if not await check_school_license(teacher_data.school_id):
+    if not await check_school_license(school_id):
         raise HTTPException(status_code=403, detail="ترخيص المدرسة غير فعال")
     
     teacher_id = generate_id("tch")
@@ -1100,7 +1133,7 @@ async def create_teacher(
         "name": teacher_data.name,
         "name_ar": teacher_data.name_ar,
         "role": UserRole.TEACHER,
-        "school_id": teacher_data.school_id,
+        "school_id": school_id,
         "is_active": True,
         "password": hash_password(teacher_data.password),
         "created_at": now.isoformat()
@@ -1111,7 +1144,7 @@ async def create_teacher(
     teacher_doc = {
         "teacher_id": teacher_id,
         "user_id": user_id,
-        "school_id": teacher_data.school_id,
+        "school_id": school_id,
         "name": teacher_data.name,
         "name_ar": teacher_data.name_ar,
         "email": teacher_data.email,
@@ -1184,6 +1217,12 @@ async def create_invoice(
     invoice_data: InvoiceCreate,
     user: dict = Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.ACCOUNTANT))
 ):
+    school_id = resolve_school_id(user, invoice_data.school_id)
+    # Validate the student belongs to the same tenant
+    student = await db.students.find_one({"student_id": invoice_data.student_id}, {"_id": 0, "school_id": 1})
+    if not student or student.get("school_id") != school_id:
+        raise HTTPException(status_code=404, detail="الطالب غير موجود في هذه المدرسة")
+
     invoice_id = generate_id("inv")
     invoice_number = f"INV-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
     now = datetime.now(timezone.utc)
@@ -1191,7 +1230,7 @@ async def create_invoice(
     invoice_doc = {
         "invoice_id": invoice_id,
         "invoice_number": invoice_number,
-        "school_id": invoice_data.school_id,
+        "school_id": school_id,
         "student_id": invoice_data.student_id,
         "amount": invoice_data.amount,
         "paid_amount": 0,
@@ -1247,7 +1286,12 @@ async def create_payment(
     invoice = await db.invoices.find_one({"invoice_id": payment_data.invoice_id}, {"_id": 0})
     if not invoice:
         raise HTTPException(status_code=404, detail="الفاتورة غير موجودة")
-    
+
+    # Tenancy: force JWT school_id and reject cross-tenant payment attempts
+    school_id = resolve_school_id(user, payment_data.school_id)
+    if invoice.get("school_id") != school_id:
+        raise HTTPException(status_code=403, detail="غير مصرح")
+
     payment_id = generate_id("pay")
     receipt_number = f"RCP-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
     now = datetime.now(timezone.utc)
@@ -1255,7 +1299,7 @@ async def create_payment(
     payment_doc = {
         "payment_id": payment_id,
         "receipt_number": receipt_number,
-        "school_id": payment_data.school_id,
+        "school_id": school_id,
         "invoice_id": payment_data.invoice_id,
         "amount": payment_data.amount,
         "payment_method": payment_data.payment_method,
@@ -1349,12 +1393,13 @@ async def create_grade(
     grade_data: GradeCreate,
     user: dict = Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN))
 ):
+    school_id = resolve_school_id(user, grade_data.school_id)
     grade_id = generate_id("grd")
     now = datetime.now(timezone.utc)
     
     grade_doc = {
         "grade_id": grade_id,
-        "school_id": grade_data.school_id,
+        "school_id": school_id,
         "name": grade_data.name,
         "name_ar": grade_data.name_ar,
         "level": grade_data.level,
@@ -1401,12 +1446,13 @@ async def create_subject(
     subject_data: SubjectCreate,
     user: dict = Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN))
 ):
+    school_id = resolve_school_id(user, subject_data.school_id)
     subject_id = generate_id("sub")
     now = datetime.now(timezone.utc)
     
     subject_doc = {
         "subject_id": subject_id,
-        "school_id": subject_data.school_id,
+        "school_id": school_id,
         "name": subject_data.name,
         "name_ar": subject_data.name_ar,
         "code": subject_data.code,
@@ -1452,12 +1498,13 @@ async def create_exam(
     exam_data: ExamCreate,
     user: dict = Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER))
 ):
+    school_id = resolve_school_id(user, exam_data.school_id)
     exam_id = generate_id("exm")
     now = datetime.now(timezone.utc)
     
     exam_doc = {
         "exam_id": exam_id,
-        "school_id": exam_data.school_id,
+        "school_id": school_id,
         "name": exam_data.name,
         "name_ar": exam_data.name_ar,
         "exam_type": exam_data.exam_type,
@@ -1510,25 +1557,92 @@ async def record_attendance(
     attendance_data: AttendanceCreate,
     user: dict = Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER))
 ):
-    attendance_id = generate_id("att")
+    school_id = resolve_school_id(user, attendance_data.school_id)
+    # Verify student belongs to the same tenant
+    student = await db.students.find_one({"student_id": attendance_data.student_id}, {"_id": 0, "school_id": 1})
+    if not student or student.get("school_id") != school_id:
+        raise HTTPException(status_code=404, detail="الطالب غير موجود في هذه المدرسة")
+
     now = datetime.now(timezone.utc)
-    
-    attendance_doc = {
-        "attendance_id": attendance_id,
-        "school_id": attendance_data.school_id,
+    filter_key = {
+        "school_id": school_id,
         "student_id": attendance_data.student_id,
         "subject_id": attendance_data.subject_id,
         "date": attendance_data.date,
+    }
+    # Idempotent write: one record per (school, student, subject, date)
+    set_fields = {
         "status": attendance_data.status,
         "notes": attendance_data.notes,
-        "recorded_by": attendance_data.recorded_by,
-        "created_at": now.isoformat()
+        "recorded_by": attendance_data.recorded_by or user.get("user_id"),
+        "updated_at": now.isoformat(),
     }
-    
-    await db.attendance.insert_one(attendance_doc)
-    attendance_doc.pop("_id", None)
-    attendance_doc["created_at"] = now
-    return AttendanceResponse(**attendance_doc)
+    set_on_insert = {
+        "attendance_id": generate_id("att"),
+        "created_at": now.isoformat(),
+    }
+    await db.attendance.update_one(
+        filter_key,
+        {"$set": set_fields, "$setOnInsert": set_on_insert},
+        upsert=True,
+    )
+    doc = await db.attendance.find_one(filter_key, {"_id": 0})
+    if isinstance(doc.get("created_at"), str):
+        doc["created_at"] = datetime.fromisoformat(doc["created_at"])
+    return AttendanceResponse(**doc)
+
+
+@academic_router.post("/attendance/bulk")
+async def record_attendance_bulk(
+    payload: Dict[str, Any],
+    user: dict = Depends(require_roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER))
+):
+    """
+    Bulk-record attendance for a class/date in a single request.
+    payload = { date: 'YYYY-MM-DD', subject_id?: str, records: [{student_id, status, notes?}] }
+    All entries upserted; tenancy forced from JWT.
+    """
+    school_id = resolve_school_id(user, payload.get("school_id"))
+    date_str = payload.get("date")
+    subject_id = payload.get("subject_id")
+    records = payload.get("records") or []
+    if not date_str or not isinstance(records, list):
+        raise HTTPException(status_code=400, detail="date و records مطلوبان")
+
+    now = datetime.now(timezone.utc)
+    written = 0
+    for r in records:
+        sid = r.get("student_id")
+        status = r.get("status") or "present"
+        if not sid:
+            continue
+        student = await db.students.find_one({"student_id": sid}, {"_id": 0, "school_id": 1})
+        if not student or student.get("school_id") != school_id:
+            continue  # silently skip cross-tenant / missing
+        filter_key = {
+            "school_id": school_id,
+            "student_id": sid,
+            "subject_id": subject_id,
+            "date": date_str,
+        }
+        await db.attendance.update_one(
+            filter_key,
+            {
+                "$set": {
+                    "status": status,
+                    "notes": r.get("notes"),
+                    "recorded_by": user.get("user_id"),
+                    "updated_at": now.isoformat(),
+                },
+                "$setOnInsert": {
+                    "attendance_id": generate_id("att"),
+                    "created_at": now.isoformat(),
+                },
+            },
+            upsert=True,
+        )
+        written += 1
+    return {"success": True, "written": written, "date": date_str}
 
 @academic_router.get("/attendance", response_model=List[AttendanceResponse])
 async def list_attendance(
@@ -1566,12 +1680,13 @@ async def create_notification(
     notification_data: NotificationCreate,
     user: dict = Depends(get_current_user)
 ):
+    school_id = resolve_school_id(user, notification_data.school_id)
     notification_id = generate_id("notif")
     now = datetime.now(timezone.utc)
     
     notification_doc = {
         "notification_id": notification_id,
-        "school_id": notification_data.school_id,
+        "school_id": school_id,
         "sender_id": user["user_id"],
         "title": notification_data.title,
         "title_ar": notification_data.title_ar or notification_data.title,
@@ -1817,6 +1932,32 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+@app.on_event("startup")
+async def ensure_indexes():
+    """Create critical indexes for tenancy and idempotency."""
+    try:
+        # Attendance idempotency: 1 record per (school, student, subject, date)
+        # subject_id may be None -> stored as null; index still enforces uniqueness.
+        await db.attendance.create_index(
+            [("school_id", 1), ("student_id", 1), ("subject_id", 1), ("date", 1)],
+            unique=True,
+            name="uniq_attendance_per_student_day"
+        )
+        # Cleanup pre-existing duplicates so the index can be built (skip if already unique)
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Attendance index create warning (may exist / duplicates present): {e}")
+
+    # Non-unique tenancy helpers (cheap on startup)
+    for coll in ["students", "teachers", "invoices", "payments", "grades",
+                 "subjects", "exams", "attendance", "sections", "rooms",
+                 "levels", "schedule_periods", "assignments", "notifications"]:
+        try:
+            await db[coll].create_index([("school_id", 1)], name=f"tenant_{coll}_school_id")
+        except Exception:
+            pass
+
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

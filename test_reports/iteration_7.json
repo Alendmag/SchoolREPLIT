@@ -1,0 +1,67 @@
+{
+  "summary": "SECOND rigorous end-to-end verification pass (READ-ONLY, no code changes). Ran backend pytest chain (11/11 PASS) + real UI Playwright pass on production URL as school_admin@test.ly + backend surface probing for tenancy and duplication. Confirmed iter-6 CRUD workflows are green (Login, Teacher, Student create, Exam, Schedule, Finance invoice+payment). Discovered THREE previously-unreported issues that are deployment blockers: (1) multi-tenant WRITE isolation is broken: POST /finance/invoices and POST /academic/attendance persist any client-supplied school_id, allowing cross-tenant data planting; (2) attendance POST has no unique index or upsert, so every save-click duplicates rows for the same (student,date) — attendance % will be inflated; (3) Student 360 profile does NOT exist — view-student and edit-student buttons in StudentsPage have no onClick handler. Reports UI shows real backend data but as a raw JSON dump — MAJOR UX gap. Deliverable /app/END_TO_END_ERP_VALIDATION.md written with GO/NO-GO recommendation = NO-GO. No files in /app/backend or /app/frontend modified.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/finance/invoices", "issue": "Multi-tenant WRITE isolation broken: client-supplied body.school_id is persisted instead of user's JWT school_id. Verified by planting invoice with school_id=school_OTHER_TENANT_9999 → HTTP 200.", "priority": "CRITICAL"},
+      {"endpoint": "POST /api/academic/attendance", "issue": "Same tenancy bypass AND no idempotency: multiple POSTs for same (student_id,date) create N duplicate rows (proved 3x). Real UI's per-student save-loop will inflate attendance stats.", "priority": "CRITICAL"}
+    ],
+    "minor": [
+      {"endpoint": "/api/academic/grades/, /api/academic/subjects/", "issue": "307 redirect on trailing slash (cosmetic, carried over)."},
+      {"endpoint": "List endpoints (students, invoices, attendance)", "issue": "Hard cap .to_list(1000) silently truncates for larger schools."},
+      {"endpoint": "Cascade/FK", "issue": "Deleting a Grade/Section does not cascade; orphaned Students/Exams/Attendance possible."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "StudentsPage", "issue": "view-student-{id} button has NO onClick handler (line 435). No Student 360 profile page/dialog exists — explicit product requirement missing.", "selector": "[data-testid^=\"view-student-\"]", "priority": "CRITICAL"},
+      {"component": "StudentsPage", "issue": "edit-student-{id} button has NO onClick handler (line 438). Students cannot be edited via UI.", "selector": "[data-testid^=\"edit-student-\"]", "priority": "HIGH"},
+      {"component": "ReportsPage", "issue": "Reports rendered as raw JSON <pre> dump (line 122). No tables/charts. Unusable for end-users.", "selector": "[data-testid=\"reports-page\"]", "priority": "HIGH"},
+      {"component": "AttendancePage", "issue": "Section dropdown is not filtered by selected Grade; picking a mismatched pair silently shows 0 students.", "selector": "[data-testid=\"section-select\"]", "priority": "MEDIUM"},
+      {"component": "AttendancePage", "issue": "Summary cards (present/absent/late/excused counts) observed as 0 even after marking — needs verification that they read from real backend aggregate for the selected class/date.", "selector": ".stats-summary", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [
+      {"flow": "Attendance save", "issue": "Sends N parallel POSTs (Promise.all) which duplicate rows on backend; needs bulk endpoint + upsert.", "affected_selectors": ["[data-testid=\"save-attendance-btn\"]"]}
+    ],
+    "design_issues": [
+      {"screen": "Dialogs", "issues": ["Radix Dialog missing aria-describedby warnings (a11y)"]},
+      {"screen": "Dashboard", "issues": ["Recharts width(-1)/height(-1) initial warning"]},
+      {"screen": "Icon-only action buttons", "issues": ["Eye/Edit/Trash2 buttons lack aria-label for screen readers"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_creation_chain.py",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/app/END_TO_END_ERP_VALIDATION.md"
+  ],
+  "action_items": [
+    "[CRITICAL] Server-side override school_id from JWT on every POST/PUT/PATCH (ignore client-supplied school_id in body/query). Audit: invoices, payments, attendance, students, teachers, exams, schedule_periods, grades, sections, rooms, subjects.",
+    "[CRITICAL] Add unique compound index on attendance (school_id, student_id, subject_id, date) AND switch POST /academic/attendance to upsert (or provide POST /academic/attendance/bulk that replaces the day).",
+    "[CRITICAL] Implement Student 360 profile: wire view-student onClick to open Dialog or route /students/:id with tabs Academic / Attendance / Financial fed by /academic/grades, /academic/attendance, /finance/invoices scoped to student_id.",
+    "[HIGH] Wire edit-student onClick to open the existing StudentForm in edit mode.",
+    "[HIGH] Rewrite ReportsPage to render real tables/charts for attendance %, grade averages, finance totals, student counts instead of JSON.stringify pre-dump.",
+    "[MEDIUM] Filter section dropdown by selected grade in AttendancePage & StudentsPage.",
+    "[MEDIUM] Clean residual TEST/UI-prefixed students from production tenant (school_a259442901a0).",
+    "[MEDIUM] Add cascade or soft-delete rules to prevent orphaned records when a Grade/Section is deleted.",
+    "[LOW] Add DialogDescription/aria-describedby to remaining DialogContent for a11y.",
+    "[LOW] Use non-trailing-slash routes on frontend to avoid 307 hop for academic/grades and academic/subjects."
+  ],
+  "critical_code_review_comments": [
+    "server.py: every mutation endpoint accepts Pydantic model with school_id — server must override with user.school_id from JWT, not trust the client. This is a systemic issue, not per-endpoint.",
+    "AttendanceCreate does not include an upsert path; a bulk POST endpoint that accepts a list of {student_id,status} for a given date would eliminate N+1 requests and duplicate rows in one shot.",
+    "StudentsPage.js: view-student and edit-student buttons ship as inert UI — either remove them until implemented or ship the Student 360 dialog.",
+    "ReportsPage.js: 129 lines but no real presentation of data.data — using <pre>JSON.stringify</pre> is unfit for production ERP consumers.",
+    "AttendancePage.js: summary cards computed from unclear source; ensure counts are computed from `attendanceRecords` for the selected class+date (not global today).",
+    "No Mongo indexes visible in server.py — recommend creating unique indexes at startup: attendance(student_id,date,subject_id), invoices(invoice_number), users(email)."
+  ],
+  "updated_files": [
+    "/app/END_TO_END_ERP_VALIDATION.md (new deliverable)",
+    "/app/test_reports/iteration_7.json (this file)"
+  ],
+  "success_rate": {"backend": "11/11 pytest chain PASS but 2 CRITICAL production endpoints broken (tenancy+attendance dedup) = 78% weighted", "frontend": "6/9 workflows fully green; Student 360 missing, Reports UI unusable, Attendance save duplicates = 65%"},
+  "test_credentials": "school_admin@test.ly / Admin@123 (from /app/memory/test_credentials.md). Login verified working.",
+  "seed_data_creation": "One TEST invoice + 1 payment + 3 dup attendance rows for stu_b041672c3772 on 2026-01-15 + 1 cross-tenant plant invoice (school_OTHER_TENANT_9999) + 1 cross-tenant plant attendance. Left in place as evidence for main agent — please clean during CF-1 fix.",
+  "retest_needed": true,
+  "main_agent_can_self_test": false,
+  "context_for_next_testing_agent": "Iter 7 is the first pass to find real production-severity bugs beyond CRUD. Focus for the next iteration after main agent fixes: (a) re-run cross-tenant plant curl (should now return 403/400 or persist with server's own school_id), (b) hammer POST /academic/attendance 3x for same student+date and confirm only 1 record exists, (c) UI-verify Student 360 opens with 3 tabs and shows real per-student grades/attendance/invoices, (d) UI-verify Edit student opens dialog pre-filled, (e) UI-verify Reports show tables/charts. Backend chain pytest at /app/backend/tests/test_creation_chain.py still valid — extend with tenancy-negative-test and attendance-idempotency test after fix. NO CODE CHANGES WERE MADE in this iteration.",
+  "rca of the issue": "CF-1 root cause: create_invoice/record_attendance handlers use `invoice_data.school_id` / `attendance_data.school_id` directly (server.py:1194, 1518) — they trust the request body. Fix: replace with `user['school_id']` from `get_current_user`. CF-2 root cause: `db.attendance.insert_one` at server.py:1528 with no unique key. Fix: create unique index at startup on (school_id, student_id, subject_id, date) and switch to `update_one({...}, {'$set': doc}, upsert=True)`. CF-3 root cause: StudentsPage.js view/edit buttons never received onClick wiring — feature simply not implemented. Fix: add StudentProfileDialog component and setDialogOpen(true) with mode='view'/'edit'."
+}

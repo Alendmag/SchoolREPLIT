@@ -126,24 +126,26 @@ export default function AttendancePage() {
     }));
   };
 
+  const handleGradeChange = (value) => {
+    setSelectedGrade(value);
+    // Reset section when grade changes so we never keep a section from another grade
+    setSelectedSection('');
+  };
+
   const handleSubmitAttendance = async () => {
     setSubmitting(true);
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     
     try {
-      // Submit attendance for each student
-      const promises = students.map(student => {
-        const status = attendance[student.student_id] || 'present';
-        return api.post('/academic/attendance/', {
-          school_id: user.school_id,
-          student_id: student.student_id,
-          date: dateStr,
-          status: status,
-          recorded_by: user.user_id
-        });
+      // Single idempotent bulk request (upserts per student — no duplicates on re-save)
+      const records = students.map((student) => ({
+        student_id: student.student_id,
+        status: attendance[student.student_id] || 'present',
+      }));
+      await api.post('/academic/attendance/bulk', {
+        date: dateStr,
+        records,
       });
-      
-      await Promise.all(promises);
       toast.success(language === 'ar' ? 'تم حفظ الحضور بنجاح' : 'Attendance saved successfully');
       fetchStudentsAndAttendance();
     } catch (error) {
@@ -295,7 +297,7 @@ export default function AttendancePage() {
             </Popover>
 
             {/* Grade Select */}
-            <Select value={selectedGrade} onValueChange={setSelectedGrade}>
+            <Select value={selectedGrade} onValueChange={handleGradeChange}>
               <SelectTrigger className="w-full md:w-[200px]" data-testid="grade-select">
                 <SelectValue placeholder={language === 'ar' ? 'اختر الصف' : 'Select Grade'} />
               </SelectTrigger>
